@@ -55,6 +55,21 @@ From the repository root with the virtual environment activated:
 python -m harness.runner
 ```
 
+For a quick live check of just one development requirement:
+
+```sh
+python -m harness.runner --limit 1
+```
+
+The terminal shows the results path and input immediately, then the reviewer
+output as soon as it finishes, followed by the scorer and judge score/reason.
+Waiting messages identify the active model stage. Each saved JSONL row contains
+the complete result; Ctrl+C also saves available outputs for the interrupted item.
+Qwen thinking is explicitly disabled for these structured responses. Each model
+request has a 180-second network timeout, with generation capped at 1,024 tokens
+for the reviewer and 512 for the judge. Invalid or truncated JSON is an error,
+not a grade. These limits do not guarantee a particular total run duration.
+
 Each development item is reviewed once and independently judged once. The scorer
 compares predicted criteria with golden violations, reporting correct, missed,
 incorrect, and correctly unflagged criteria plus TP/FN/FP/TN counts and exact match.

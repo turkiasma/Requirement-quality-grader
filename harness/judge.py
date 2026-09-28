@@ -3,12 +3,13 @@
 import json
 from pathlib import Path
 
-import ollama
+from ollama import Client
 
 from harness.schemas import JudgeOutput, RequirementCritique
 
 
 DEFAULT_MODEL = 'qwen3:8b'
+chat = Client(timeout=180).chat
 ROOT = Path(__file__).resolve().parent.parent
 PROMPT_PATH = ROOT / 'prompts' / 'judge_prompt_v2.txt'
 GUIDE_PATH = ROOT / 'data' / 'labelling_guide.md'
@@ -40,14 +41,15 @@ def judge_review(requirement, review, model=DEFAULT_MODEL):
         'review': critique.model_dump(),
     }, ensure_ascii=False)
     try:
-        response = ollama.chat(
+        response = chat(
             model=model,
             messages=[
                 {'role': 'system', 'content': system_message},
                 {'role': 'user', 'content': user_message},
             ],
             format=JudgeOutput.model_json_schema(),
-            options={'temperature': 0},
+            think=False,
+            options={'temperature': 0, 'num_predict': 512},
         )
         return JudgeOutput.model_validate_json(
             response['message']['content']

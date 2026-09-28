@@ -21,7 +21,8 @@ class ReviewerTests(unittest.TestCase):
         self.assertEqual(result.model_dump(), payload)
         request = chat.call_args.kwargs
         self.assertEqual(request['model'], 'qwen3:8b')
-        self.assertEqual(request['options'], {'temperature': 0})
+        self.assertEqual(request['options'], {'temperature': 0, 'num_predict': 1024})
+        self.assertFalse(request['think'])
         self.assertEqual(request['format'], RequirementCritique.model_json_schema())
         self.assertEqual(request['messages'][1]['content'], 'Original requirement.')
         self.assertIn('atomic:', request['messages'][0]['content'])

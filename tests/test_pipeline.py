@@ -38,7 +38,7 @@ class PipelineTests(unittest.TestCase):
         rows = [json.loads(line) for line in path.read_text(encoding='utf-8').splitlines()]
         return path, rows, console.getvalue()
 
-    @patch('harness.judge.ollama.chat')
+    @patch('harness.judge.chat')
     @patch('harness.reviewer.chat')
     def test_complete_pipeline_with_mocked_model_responses(self, reviewer_chat, judge_chat):
         reviewer_chat.return_value = SimpleNamespace(message=SimpleNamespace(
@@ -143,6 +143,51 @@ class PipelineTests(unittest.TestCase):
     def test_existing_pilot_loads(self):
         self.assertEqual(len(load_dataset()), 20)
         self.assertTrue(all(row['split'] == 'dev' for row in load_dataset()))
+
+    def test_outputs_appear_before_next_model_call(self):
+        console = io.StringIO()
+
+        def review(requirement):
+            self.assertIn('Input requirement:', console.getvalue())
+            self.assertIn('Waiting for reviewer', console.getvalue())
+            return self.critique
+
+        def judge(requirement, critique):
+            self.assertIn('Reviewer output:', console.getvalue())
+            self.assertIn('Scorer output:', console.getvalue())
+            self.assertIn('Waiting for judge', console.getvalue())
+            return self.judgment
+
+        with patch('harness.runner.review_requirement', side_effect=review), \
+             patch('harness.runner.judge_review', side_effect=judge), redirect_stdout(console):
+            run(self.dataset, self.results)
+        self.assertIn('Judge score: 5', console.getvalue())
+
+    @patch('harness.runner.judge_review', side_effect=KeyboardInterrupt)
+    @patch('harness.runner.review_requirement')
+    def test_interrupt_saves_partial_result_and_stops(self, reviewer, judge):
+        reviewer.return_value = self.critique
+        self.write_items([item(), item('REQ-002')])
+        with redirect_stdout(io.StringIO()), self.assertRaises(KeyboardInterrupt):
+            run(self.dataset, self.results)
+        files = list(self.results.glob('*.jsonl'))
+        self.assertEqual(len(files), 1)
+        row = json.loads(files[0].read_text())
+        self.assertEqual(row['reviewer_output'], self.critique.model_dump())
+        self.assertTrue(row['scorer_output']['exact_match'])
+        self.assertIsNone(row['judge_output'])
+        self.assertEqual(row['error'], {'stage': 'judge', 'message': 'Interrupted by user.'})
+        reviewer.assert_called_once()
+
+    @patch('harness.runner.judge_review')
+    @patch('harness.runner.review_requirement')
+    def test_limit_processes_only_requested_dev_items(self, reviewer, judge):
+        reviewer.return_value, judge.return_value = self.critique, self.judgment
+        self.write_items([item(), item('REQ-002')])
+        with redirect_stdout(io.StringIO()):
+            path = run(self.dataset, self.results, limit=1)
+        self.assertEqual(len(path.read_text().splitlines()), 1)
+        reviewer.assert_called_once()
 
 
 if __name__ == '__main__':

@@ -1,12 +1,14 @@
 from pathlib import Path
 
-from ollama import chat
+from ollama import Client
 
 from harness.schemas import RequirementCritique
 
 
 # Default local model used for requirement reviews
 DEFAULT_MODEL = "qwen3:8b"
+# Bound an unresponsive local request rather than waiting indefinitely.
+chat = Client(timeout=180).chat
 
 # Path to the current reviewer prompt
 PROMPT_PATH = (
@@ -71,9 +73,13 @@ def review_requirement(
             # Force the model to follow our Pydantic JSON schema
             format=RequirementCritique.model_json_schema(),
 
+            # Return the structured answer without a separate thinking phase.
+            think=False,
+
             # Low temperature for more reproducible evaluation
             options={
-                "temperature": 0
+                "temperature": 0,
+                "num_predict": 1024,
             }
         )
 

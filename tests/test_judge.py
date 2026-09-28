@@ -10,7 +10,7 @@ class JudgeTests(unittest.TestCase):
     def setUp(self):
         self.review = {'issues': [], 'improved_requirement': 'Original requirement.'}
 
-    @patch('harness.judge.ollama.chat')
+    @patch('harness.judge.chat')
     def test_valid_scores(self, chat):
         for score in range(1, 6):
             with self.subTest(score=score):
@@ -19,7 +19,7 @@ class JudgeTests(unittest.TestCase):
                 self.assertEqual(judge_review('Original requirement.', self.review),
                                  {'score': score, 'reason': 'Specific reasoning.'})
 
-    @patch('harness.judge.ollama.chat')
+    @patch('harness.judge.chat')
     def test_invalid_outputs_raise_instead_of_fabricating_grade(self, chat):
         invalid = [{'score': score, 'reason': 'Reason.'}
                    for score in (0, 6, True, False, 2.5, 3.0, '3', None)]
@@ -39,7 +39,7 @@ class JudgeTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             judge_review('Original requirement.', self.review)
 
-    @patch('harness.judge.ollama.chat')
+    @patch('harness.judge.chat')
     def test_request_uses_guide_and_excludes_reference_information(self, chat):
         chat.return_value = {'message': {'content': '{"score":5,"reason":"No issues."}'}}
         review = dict(self.review, gold_violations={'clarity': True},
@@ -48,7 +48,8 @@ class JudgeTests(unittest.TestCase):
         request = chat.call_args.kwargs
         self.assertEqual(request['model'], 'custom-model')
         self.assertEqual(request['format'], JudgeOutput.model_json_schema())
-        self.assertEqual(request['options'], {'temperature': 0})
+        self.assertEqual(request['options'], {'temperature': 0, 'num_predict': 512})
+        self.assertFalse(request['think'])
         system = request['messages'][0]['content']
         guide = GUIDE_PATH.read_text(encoding='utf-8')
         for paragraph in guide.split('\n\n'):
@@ -60,13 +61,13 @@ class JudgeTests(unittest.TestCase):
         for forbidden in ('gold_violations', 'scorer_output'):
             self.assertNotIn(forbidden, json.dumps(request['messages']))
 
-    @patch('harness.judge.ollama.chat')
+    @patch('harness.judge.chat')
     def test_accepts_pydantic_critique(self, chat):
         chat.return_value = {'message': {'content': '{"score":5,"reason":"No issues."}'}}
         result = judge_review('Original requirement.', RequirementCritique(**self.review))
         self.assertEqual(result['score'], 5)
 
-    @patch('harness.judge.ollama.chat', side_effect=ConnectionError('Offline'))
+    @patch('harness.judge.chat', side_effect=ConnectionError('Offline'))
     def test_transport_error_is_explicit(self, chat):
         with self.assertRaisesRegex(RuntimeError, 'Offline'):
             judge_review('Original requirement.', self.review)

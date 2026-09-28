@@ -11,3 +11,11 @@
 - Version 1 prompts remain unchanged for reference.
 - Before/after quality scores: not measured yet. Mocked tests validate behaviour,
   not model quality or agreement with humans.
+
+### Runtime follow-up
+
+- Disable Qwen thinking explicitly for reviewer and judge structured responses;
+  cap generated tokens at 1,024 and 512 respectively and set a 180-second
+  network timeout. Prompt text and the grading rubric are unchanged.
+- These inference-setting changes require new quality measurements; no score
+  improvement is claimed.
