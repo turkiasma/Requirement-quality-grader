@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from harness.reviewer import review_requirement
+from harness.reviewer import GUIDE_PATH, PROMPT_PATH, load_prompt, review_requirement
 from harness.schemas import CRITERIA, RequirementCritique
 
 
@@ -49,6 +49,30 @@ class ReviewerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             review_requirement('   ')
         chat.assert_not_called()
+
+    @patch('harness.reviewer.chat')
+    def test_v3_request_includes_definitions_but_not_rubric_or_pilot_labels(self, chat):
+        chat.return_value = SimpleNamespace(message=SimpleNamespace(content=json.dumps({
+            'issues': [], 'improved_requirement': 'Original requirement.'})))
+        review_requirement('Original requirement.')
+        system = chat.call_args.kwargs['messages'][0]['content']
+        self.assertEqual(PROMPT_PATH.name, 'critique_prompt_v3.txt')
+        self.assertIn(PROMPT_PATH.read_text(encoding='utf-8'), system)
+        guide = GUIDE_PATH.read_text(encoding='utf-8')
+        definitions = '## 1. Atomicity' + guide.split('## 1. Atomicity', 1)[1]
+        definitions = definitions.split('## Critique Scoring Rubric', 1)[0]
+        for paragraph in definitions.split('\n\n'):
+            if not paragraph.lstrip().startswith('For the initial dev pilot,'):
+                self.assertIn(paragraph, system)
+        self.assertNotIn('REQ-001', system)
+        self.assertNotIn('## Critique Scoring Rubric', system)
+        self.assertNotIn('### Score 5', system)
+
+    @patch('harness.reviewer.GUIDE_PATH')
+    def test_missing_guide_sections_fail_explicitly(self, guide_path):
+        guide_path.read_text.return_value = '# An incomplete guide'
+        with self.assertRaisesRegex(ValueError, 'missing criterion or scoring'):
+            load_prompt()
 
 
 if __name__ == '__main__':

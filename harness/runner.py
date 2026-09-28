@@ -62,7 +62,7 @@ def run(data_path=None, results_dir=None, limit=None):
     directory = Path(results_dir or RESULTS_DIR)
     directory.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
-    output_path = directory / f'pipeline_v2_{timestamp}_{uuid4().hex}.jsonl'
+    output_path = directory / f'pipeline_v3_{timestamp}_{uuid4().hex}.jsonl'
     completed = failed = 0
     interrupted = False
 

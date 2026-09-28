@@ -11,7 +11,7 @@ from harness.schemas import JudgeOutput, RequirementCritique
 DEFAULT_MODEL = 'qwen3:8b'
 chat = Client(timeout=180).chat
 ROOT = Path(__file__).resolve().parent.parent
-PROMPT_PATH = ROOT / 'prompts' / 'judge_prompt_v2.txt'
+PROMPT_PATH = ROOT / 'prompts' / 'judge_prompt_v3.txt'
 GUIDE_PATH = ROOT / 'data' / 'labelling_guide.md'
 
 

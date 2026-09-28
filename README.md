@@ -73,12 +73,14 @@ not a grade. These limits do not guarantee a particular total run duration.
 Each development item is reviewed once and independently judged once. The scorer
 compares predicted criteria with golden violations, reporting correct, missed,
 incorrect, and correctly unflagged criteria plus TP/FN/FP/TN counts and exact match.
-The judge receives the requirement, critique, and labelling guide and returns a
+The reviewer receives the guide's criterion definitions and boundary rules, with
+the critique-scoring rubric and pilot label assignments excluded. The judge
+receives the requirement, critique, and labelling guide and returns a
 validated 1–5 `score` and `reason`. Golden labels and scorer results are not sent to
 it; the guide's paragraph revealing pilot category assignments is also excluded.
 
 The runner prints the input and both evaluations, saves one row per item in a new
-`results/pipeline_v2_<timestamp>_<suffix>.jsonl` file, and prints completion/failure
+`results/pipeline_v3_<timestamp>_<suffix>.jsonl` file, and prints completion/failure
 counts. Stage errors preserve available outputs and are not numeric grades.
 Only `dev` rows are processed; existing run files are never overwritten.
 
@@ -90,6 +92,6 @@ python -m unittest discover -s tests
 
 Tests mock model calls and use temporary output directories; they require no
 running Ollama server. They verify implementation behaviour, not model quality.
-The active prompts are version 2; version 1 remains available for reference.
+The active prompts are version 3; versions 1 and 2 remain available for reference.
 Human agreement, judge reliability, bias studies, aggregate quality metrics,
 and the final report remain future work.

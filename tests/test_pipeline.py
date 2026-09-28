@@ -46,6 +46,7 @@ class PipelineTests(unittest.TestCase):
         judge_chat.return_value = {'message': {'content': json.dumps(self.judgment)}}
         path, rows, console = self.execute()
         self.assertEqual(path.parent, self.results)
+        self.assertTrue(path.name.startswith('pipeline_v3_'))
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertEqual(set(row), {'id', 'split', 'requirement', 'gold_violations',

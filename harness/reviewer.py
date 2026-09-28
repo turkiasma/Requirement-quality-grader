@@ -14,13 +14,14 @@ chat = Client(timeout=180).chat
 PROMPT_PATH = (
     Path(__file__).parent.parent
     / "prompts"
-    / "critique_prompt_v2.txt"
+    / "critique_prompt_v3.txt"
 )
+GUIDE_PATH = Path(__file__).resolve().parent.parent / "data" / "labelling_guide.md"
 
 
 def load_prompt() -> str:
     """
-    Load the requirement-review prompt from the prompts directory.
+    Load the reviewer instructions and the guide's criterion decision rules.
     """
 
     if not PROMPT_PATH.exists():
@@ -28,7 +29,19 @@ def load_prompt() -> str:
             f"Prompt file not found: {PROMPT_PATH}"
         )
 
-    return PROMPT_PATH.read_text(encoding="utf-8")
+    guide = GUIDE_PATH.read_text(encoding="utf-8")
+    _, start, definitions = guide.partition("## 1. Atomicity")
+    definitions, end, _ = definitions.partition("## Critique Scoring Rubric")
+    if not start or not end:
+        raise ValueError("Labelling guide is missing criterion or scoring section headings.")
+    definitions = "\n\n".join(
+        paragraph for paragraph in (start + definitions).split("\n\n")
+        if not paragraph.lstrip().startswith("For the initial dev pilot,")
+    )
+    return (
+        PROMPT_PATH.read_text(encoding="utf-8")
+        + "\n\nCriterion definitions and boundary rules:\n" + definitions
+    )
 
 
 def review_requirement(

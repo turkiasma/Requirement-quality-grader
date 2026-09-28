@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from harness.judge import GUIDE_PATH, judge_review
+from harness.judge import GUIDE_PATH, PROMPT_PATH, judge_review
 from harness.schemas import JudgeOutput, RequirementCritique
 
 
@@ -51,6 +51,8 @@ class JudgeTests(unittest.TestCase):
         self.assertEqual(request['options'], {'temperature': 0, 'num_predict': 512})
         self.assertFalse(request['think'])
         system = request['messages'][0]['content']
+        self.assertEqual(PROMPT_PATH.name, 'judge_prompt_v3.txt')
+        self.assertIn(PROMPT_PATH.read_text(encoding='utf-8'), system)
         guide = GUIDE_PATH.read_text(encoding='utf-8')
         for paragraph in guide.split('\n\n'):
             if not paragraph.startswith('For the initial dev pilot,'):
