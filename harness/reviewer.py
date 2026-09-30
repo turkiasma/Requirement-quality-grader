@@ -8,11 +8,11 @@ from harness.schemas import RequirementCritique
 # Default local model used for requirement reviews
 DEFAULT_MODEL = "qwen3:8b"
 
-# Path to the baseline reviewer prompt
+# Path to the current reviewer prompt
 PROMPT_PATH = (
     Path(__file__).parent.parent
     / "prompts"
-    / "critique_prompt_v1.txt"
+    / "critique_prompt_v2.txt"
 )
 
 
