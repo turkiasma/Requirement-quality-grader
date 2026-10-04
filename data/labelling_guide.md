@@ -1,106 +1,331 @@
 # Requirement Quality Labelling Guide
 
-## Label convention
+## Purpose
 
-For each criterion:
-- `true` = the requirement violates the criterion.
-- `false` = the requirement satisfies the criterion.
+The golden dataset represents the human ground-truth evaluation of each
+software requirement.
 
-The five criteria are:
-1. Atomicity (`atomic`)
-2. Testability (`testable`)
-3. Feasibility (`feasible`)
-4. Clarity (`clarity`)
-5. Completeness (`complete`)
+Each requirement is evaluated independently according to five software
+requirement quality criteria:
 
-Label the original requirement as written. Use ordinary software terminology, but do not invent project context, thresholds, or business rules. Judge the stated obligation within its scope; a single requirement need not specify the entire system. These pilot labels are provisional suggestions requiring independent human review, not evidence of agreement between labellers. For the final set, two people should label each item independently, record disagreements before reconciliation, and report agreement as counts and percentages.
+1. Atomicity
+2. Testability
+3. Feasibility
+4. Clarity
+5. Completeness
 
-## 1. Atomicity
+The resulting human evaluation acts as the reference answer against which
+the AI-based evaluation system will later be compared.
 
-**Definition:** One requirement expresses one main behaviour, obligation, or capability that can be accepted as a unit.
+---
 
-**Violation = true:** It combines independent obligations that could be accepted, changed, or prioritised separately, such as authentication behaviour and report generation.
+# Scoring Convention
 
-**Satisfied = false:** It describes one behaviour with its trigger, conditions, output fields, or acceptance constraints. Several fields in a receipt do not create separate requirements. Encoding and reconstructing a file may jointly define one lossless-storage capability. The word “and” alone does not establish a violation.
+Each criterion receives a binary score:
 
-**Good example:** “For each successful payment, the service shall store a receipt containing the transaction ID and amount.” `atomic: false`
+- `1` = the requirement satisfies the criterion
+- `0` = the requirement does not satisfy the criterion
 
-**Bad example:** “The login API shall reject incorrect passwords with HTTP 401, and the reports API shall export monthly sales totals as CSV.” `atomic: true`
+The final quality score is calculated as:
 
-## 2. Testability
+gold_score =
+atomicity +
+testability +
+feasibility +
+clarity +
+completeness
 
-**Definition:** Compliance can be decided objectively through a test, inspection, measurement, or analysis with a determinate acceptance result.
+The final score therefore ranges from:
 
-**Violation = true:** Subjective standards lack an acceptance rule, essential parameters are unspecified, or ambiguous wording produces different acceptance outcomes. Words such as “quickly” and “pleasant” need an operational definition. Mark this criterion independently of the source of the uncertainty.
+- `0/5` = satisfies none of the quality criteria
+- `1/5` = satisfies one criterion
+- `2/5` = satisfies two criteria
+- `3/5` = satisfies three criteria
+- `4/5` = satisfies four criteria
+- `5/5` = satisfies all five criteria
 
-**Satisfied = false:** A reviewer can determine compliance with the stated obligation. A status code or specified stored fields can be inspected without a numerical performance target. An impossible claim can still be objectively disproved by mathematical analysis; infeasibility alone does not imply non-testability.
+Each criterion must be evaluated independently.
 
-**Good example:** “The upload API shall reject files larger than 10,485,760 bytes with HTTP 413.” `testable: false`
+A requirement may fail several criteria simultaneously.
 
-**Bad example:** “The dashboard shall load quickly after sign-in.” `testable: true`
+---
 
-## 3. Feasibility
+# 1. Atomicity
 
-**Definition:** The stated obligation is technically and realistically achievable under plausible software-system constraints.
+## Definition
 
-**Violation = true:** It demands an impossible capability, contradicts its own constraints, or requires an absolute guarantee that cannot reasonably be achieved. For example, losslessly compressing every possible fixed-length input into a strictly smaller space is impossible by counting distinct inputs and outputs.
+A requirement is atomic when it expresses one main behavior, obligation,
+or capability that can be implemented and accepted as a single unit.
 
-**Satisfied = false:** No concrete impossibility or unrealistic guarantee is evident. Difficulty, expense, missing deployment details, and vague wording alone are insufficient reasons to mark infeasibility. Interpret “instantly” as an undefined timing target unless the text explicitly demands zero elapsed time.
+## Score 1
 
-**Good example:** “For each successful payment, the service shall store its transaction ID.” `feasible: false`
+Give `atomicity = 1` when the requirement describes one main behavior.
 
-**Bad example:** “The service shall reconstruct every possible 1 MiB file solely from its 256-bit hash, without any other information about the file.” `feasible: true`
+Conditions, triggers, output fields, or acceptance constraints related to
+the same behavior do not make the requirement non-atomic.
 
-## 4. Clarity
+### Example
 
-**Definition:** The wording conveys one understandable meaning for the actor, action, references, and conditions it actually states.
+> For each successful payment, the service shall store a receipt containing
+> the transaction ID and amount.
 
-**Violation = true:** Undefined pronouns, subjective descriptions, or ambiguous qualifiers permit materially different interpretations. “Their name” with two possible people, “last month” without a calendar-versus-rolling definition, and ordering by price without a direction are examples.
+This describes one main behavior: storing a payment receipt.
 
-**Satisfied = false:** The stated wording has one reasonable meaning. A plainly identified missing parameter is a completeness problem, not automatically a clarity problem; distinguish an absent value from competing meanings. Standard technical terms such as HTTP 401 do not require redefinition.
+Atomicity = 1
 
-**Good example:** “The profile page shall display the signed-in user’s stored display name.” `clarity: false`
+## Score 0
 
-**Bad example:** “When an administrator messages an account owner, the dashboard shall display their name.” `clarity: true`
+Give `atomicity = 0` when the requirement combines independent behaviors
+that could reasonably be implemented, changed, prioritized, or accepted
+separately.
 
-## 5. Completeness
+### Example
 
-**Definition:** The requirement supplies the information necessary to understand and accept its stated behaviour within its own scope.
+> The login API shall reject incorrect passwords with HTTP 401, and the
+> reports API shall export monthly sales totals as CSV.
 
-**Violation = true:** A necessary trigger, actor, outcome, parameter, constraint, or condition is absent. Examples include an unspecified retention period, export format, or maximum name length. A subjective quality target without an acceptance definition also lacks essential information.
+This describes two unrelated behaviors.
 
-**Satisfied = false:** The obligation contains enough information for its stated scope. Do not demand unrelated error cases, implementation choices, or whole-system specifications. Do not automatically mark completeness when an existing pronoun or qualifier is ambiguous: use clarity, plus testability if acceptance depends on resolving it. Add completeness when essential information is separately absent.
+Atomicity = 0
 
-**Good example:** “The audit service shall retain each login event for 30 days after the event timestamp.” `complete: false`
+---
 
-**Bad example:** “The audit service shall retain each login event for a specified retention period.” `complete: true`
+# 2. Testability
 
-## Multiple simultaneous violations
+## Definition
 
-Evaluate all five criteria independently; one requirement may violate several. “The dashboard shall load quickly” is unclear, lacks an objective acceptance rule, and omits a defined timing target, so `clarity`, `testable`, and `complete` are all `true`. Do not force single-label items or assume that every requirement is defective. The examples under each criterion illustrate that criterion only, not a complete label vector.
+A requirement is testable when compliance can be objectively verified
+through testing, inspection, measurement, or analysis.
 
-For the initial dev pilot, REQ-001–004 are good examples, REQ-005–008 primarily illustrate clarity, REQ-009–011 testability, REQ-012–014 completeness, REQ-015–016 atomicity, REQ-017–018 feasibility, and REQ-019–020 multiple problems. These are diversity groups, not mutually exclusive labels. All 20 items are development data; reserve separate, unseen test items for final reporting.
+A tester should be able to determine whether the requirement passes or
+fails.
 
-## Critique Scoring Rubric
+## Score 1
 
-Human evaluators and, later, the LLM judge will use this 1–5 rubric to evaluate the **output of the critique system**, not the original requirement itself.
+Give `testability = 1` when the requirement provides an objectively
+verifiable expected behavior.
 
-- **Job 1:** Humans label the original requirement using binary criterion violations.
-- **Job 2:** Humans and later the LLM judge score the critique system’s response using the 1–5 rubric.
+### Example
 
-### Score 5
-All real issues are correctly identified, no false issues are introduced, the explanations are accurate, and the rewrite fully fixes the problems.
+> The upload API shall reject files larger than 10,485,760 bytes with
+> HTTP 413.
 
-### Score 4
-Issues are correctly identified and explanations are solid, but the rewrite contains a minor gap.
+A test can upload a file larger than the specified size and verify the
+returned status code.
 
-### Score 3
-The main issue is identified, but a secondary issue is missed, the explanation is vague, or the rewrite only partially fixes the requirement.
+Testability = 1
 
-### Score 2
-A real issue is missed, an incorrect issue is introduced, or the rewrite does not meaningfully improve the requirement.
+## Score 0
 
-### Score 1
-The critique is mostly incorrect or unhelpful, or the rewrite worsens the requirement.
+Give `testability = 0` when the requirement depends on subjective,
+undefined, or ambiguous conditions that prevent an objective acceptance
+decision.
 
-For consistent use of overlapping descriptions, a missed secondary issue alone fits score 3 when the main issue is correctly addressed; missing the main issue fits score 2. Use score 1 when the response is mostly incorrect, unhelpful, or makes the requirement worse. For a good original requirement, identifying no issues and preserving its meaning can earn score 5; inventing a defect cannot.
+Examples include terms such as:
+
+- quickly
+- easy to use
+- pleasant
+- appropriate
+- user-friendly
+
+unless those terms are given measurable definitions.
+
+### Example
+
+> The dashboard shall load quickly after the user signs in.
+
+"Quickly" has no measurable threshold.
+
+Testability = 0
+
+---
+
+# 3. Feasibility
+
+## Definition
+
+A requirement is feasible when its stated behavior can realistically and
+technically be implemented under reasonable software-system constraints.
+
+## Score 1
+
+Give `feasibility = 1` when there is no clear technical impossibility or
+unrealistic guarantee in the requirement.
+
+A requirement should not receive a feasibility score of 0 simply because
+it is difficult, expensive, or missing some details.
+
+### Example
+
+> For each successful payment, the service shall store its transaction ID.
+
+This behavior is technically achievable.
+
+Feasibility = 1
+
+## Score 0
+
+Give `feasibility = 0` when the requirement demands something technically
+impossible, logically contradictory, or unrealistic under its stated
+constraints.
+
+### Example
+
+> The service shall reconstruct every possible 1 MiB file solely from its
+> 256-bit hash without access to any other information.
+
+This cannot be guaranteed for every possible file because different files
+can map to the same finite hash space.
+
+Feasibility = 0
+
+---
+
+# 4. Clarity
+
+## Definition
+
+A requirement is clear when its wording has one understandable
+interpretation.
+
+The actor, action, references, conditions, and expected behavior should
+not be materially ambiguous.
+
+## Score 1
+
+Give `clarity = 1` when the requirement has one reasonable interpretation.
+
+Standard technical terminology such as HTTP status codes does not need to
+be redefined.
+
+### Example
+
+> The profile page shall display the signed-in user's stored display name.
+
+The actor and expected information are clearly identified.
+
+Clarity = 1
+
+## Score 0
+
+Give `clarity = 0` when wording can reasonably be interpreted in multiple
+ways or contains ambiguous references.
+
+### Example
+
+> When an administrator sends a message to an account owner, the dashboard
+> shall display their name.
+
+"Their name" could refer to either the administrator or the account owner.
+
+Clarity = 0
+
+Other examples of potentially unclear wording include:
+
+- last month
+- appropriate
+- their
+- ordered by price without specifying direction
+- relevant information
+
+when the intended meaning cannot be determined from the requirement.
+
+---
+
+# 5. Completeness
+
+## Definition
+
+A requirement is complete when it contains enough information to
+understand and verify the behavior within the scope of that requirement.
+
+The requirement does not need to describe the entire system.
+
+It only needs to contain the information necessary for its stated
+behavior.
+
+## Score 1
+
+Give `completeness = 1` when all essential information required to
+understand and accept the stated behavior is provided.
+
+### Example
+
+> The audit service shall retain each login event for 30 days after the
+> event timestamp.
+
+The required retention period is provided.
+
+Completeness = 1
+
+## Score 0
+
+Give `completeness = 0` when essential information is missing.
+
+Examples include:
+
+- missing timing thresholds
+- unspecified maximum values
+- unspecified output formats
+- missing retention periods
+- undefined acceptance targets
+
+### Example
+
+> The audit service shall retain each login event for a specified retention
+> period.
+
+The actual retention period is missing.
+
+Completeness = 0
+
+---
+
+# Independent Evaluation of Criteria
+
+The five criteria must be evaluated independently.
+
+A problem may affect more than one criterion.
+
+For example:
+
+> The dashboard shall load quickly after the user signs in.
+
+Possible evaluation:
+
+- Atomicity = 1
+- Testability = 0
+- Feasibility = 1
+- Clarity = 0
+- Completeness = 0
+
+Gold score:
+
+1 + 0 + 1 + 0 + 0 = 2
+
+Therefore:
+
+gold_score = 2
+
+---
+
+# Golden Dataset Format
+
+Each item in `golden_set.jsonl` follows this structure:
+
+```json
+{
+  "id": "REQ-001",
+  "requirement": "Requirement text",
+  "criteria": {
+    "atomicity": 1,
+    "testability": 1,
+    "feasibility": 1,
+    "clarity": 1,
+    "completeness": 1
+  },
+  "gold_score": 5,
+  "split": "dev"
+}
+```
