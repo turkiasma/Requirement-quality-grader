@@ -1,5 +1,9 @@
 # Requirement Quality Labelling Guide
 
+**Scheme: `grade_0_5_v1`** — integer 0-5 grade anchors per criterion. This
+supersedes the earlier binary (0/1 violation) convention; the two must never
+be mixed in one dataset file.
+
 ## Purpose
 
 The golden dataset represents the human ground-truth evaluation of each
@@ -14,39 +18,35 @@ requirement quality criteria:
 4. Clarity
 5. Completeness
 
-The resulting human evaluation acts as the reference answer against which
-the AI-based evaluation system will later be compared.
+The resulting human evaluation acts as the reference against which LLM1 and
+the second assessor are both measured.
 
 ---
 
 # Scoring Convention
 
-Each criterion receives a binary score:
+Each criterion receives an integer grade from 0 to 5. Higher means better
+quality. These anchors apply to all five criteria; each criterion section
+below gives its own worked examples at each anchor.
 
-- `1` = the requirement satisfies the criterion
-- `0` = the requirement does not satisfy the criterion
+| Grade | Meaning |
+|---|---|
+| 5 | Fully satisfies the criterion within the stated scope |
+| 4 | Minor defect, limited impact |
+| 3 | Partially satisfies it; a material defect remains |
+| 2 | Major defect substantially undermines the criterion |
+| 1 | Very little of the criterion is satisfied |
+| 0 | Fundamentally fails the criterion |
 
-The final quality score is calculated as:
+The overall score is calculated as:
 
-gold_score =
-atomicity +
-testability +
-feasibility +
-clarity +
-completeness
+```
+overall_score = (atomicity + testability + feasibility + clarity + completeness) / 5
+```
 
-The final score therefore ranges from:
-
-- `0/5` = satisfies none of the quality criteria
-- `1/5` = satisfies one criterion
-- `2/5` = satisfies two criteria
-- `3/5` = satisfies three criteria
-- `4/5` = satisfies four criteria
-- `5/5` = satisfies all five criteria
-
-Each criterion must be evaluated independently.
-
-A requirement may fail several criteria simultaneously.
+This is computed by the harness, never by a model, and kept unrounded until
+comparison. Each criterion is graded independently — a requirement may score
+well on some criteria and poorly on others.
 
 ---
 
@@ -54,39 +54,35 @@ A requirement may fail several criteria simultaneously.
 
 ## Definition
 
-A requirement is atomic when it expresses one main behavior, obligation,
-or capability that can be implemented and accepted as a single unit.
+A requirement is atomic when it expresses one main behavior, obligation, or
+capability that can be implemented and accepted as a single unit.
 
-## Score 1
+**Boundary (preserve):** conditions, triggers, output fields, or acceptance
+constraints that belong to the same behavior do not by themselves lower
+atomicity. Non-atomicity means genuinely independent obligations — things
+that could reasonably be implemented, prioritized, or accepted separately.
 
-Give `atomicity = 1` when the requirement describes one main behavior.
+## Grade anchors
 
-Conditions, triggers, output fields, or acceptance constraints related to
-the same behavior do not make the requirement non-atomic.
+- **5** — One main behavior, however many conditions/fields/constraints
+  attach to it.
 
-### Example
+  > For each successful payment, the service shall store a receipt
+  > containing the transaction ID and amount.
 
-> For each successful payment, the service shall store a receipt containing
-> the transaction ID and amount.
+  One behavior: storing a payment receipt. Atomicity = 5.
 
-This describes one main behavior: storing a payment receipt.
+- **3** — The requirement is mostly one behavior, but a secondary obligation
+  is loosely bundled in a way that complicates independent acceptance
+  without being fully separable (material defect, not yet two requirements).
 
-Atomicity = 1
+- **0** — Two or more independent behaviors that could be implemented,
+  changed, or accepted separately.
 
-## Score 0
+  > The login API shall reject incorrect passwords with HTTP 401, and the
+  > reports API shall export monthly sales totals as CSV.
 
-Give `atomicity = 0` when the requirement combines independent behaviors
-that could reasonably be implemented, changed, prioritized, or accepted
-separately.
-
-### Example
-
-> The login API shall reject incorrect passwords with HTTP 401, and the
-> reports API shall export monthly sales totals as CSV.
-
-This describes two unrelated behaviors.
-
-Atomicity = 0
+  Two unrelated behaviors. Atomicity = 0.
 
 ---
 
@@ -95,49 +91,36 @@ Atomicity = 0
 ## Definition
 
 A requirement is testable when compliance can be objectively verified
-through testing, inspection, measurement, or analysis.
+through testing, inspection, measurement, or analysis — a tester can
+determine pass or fail.
 
-A tester should be able to determine whether the requirement passes or
-fails.
+**Boundary (preserve):** an objectively verifiable requirement does not need
+a specified test procedure to be testable. A requirement that is impossible
+to satisfy can still be objectively disproved — infeasibility is not the
+same defect as untestability.
 
-## Score 1
+## Grade anchors
 
-Give `testability = 1` when the requirement provides an objectively
-verifiable expected behavior.
+- **5** — Objectively verifiable expected behavior.
 
-### Example
+  > The upload API shall reject files larger than 10,485,760 bytes with
+  > HTTP 413.
 
-> The upload API shall reject files larger than 10,485,760 bytes with
-> HTTP 413.
+  A test can upload an oversized file and check the status code.
+  Testability = 5.
 
-A test can upload a file larger than the specified size and verify the
-returned status code.
+- **3** — A verifiable core behavior with one secondary condition left
+  subjective enough to need interpretation before testing, but not so vague
+  that the whole requirement is unverifiable.
 
-Testability = 1
+- **0** — Depends on subjective, undefined, or ambiguous conditions that
+  prevent any objective pass/fail decision (e.g. "quickly," "easy to use,"
+  "pleasant," "appropriate," "user-friendly," with no measurable
+  definition).
 
-## Score 0
+  > The dashboard shall load quickly after the user signs in.
 
-Give `testability = 0` when the requirement depends on subjective,
-undefined, or ambiguous conditions that prevent an objective acceptance
-decision.
-
-Examples include terms such as:
-
-- quickly
-- easy to use
-- pleasant
-- appropriate
-- user-friendly
-
-unless those terms are given measurable definitions.
-
-### Example
-
-> The dashboard shall load quickly after the user signs in.
-
-"Quickly" has no measurable threshold.
-
-Testability = 0
+  "Quickly" has no measurable threshold. Testability = 0.
 
 ---
 
@@ -148,37 +131,29 @@ Testability = 0
 A requirement is feasible when its stated behavior can realistically and
 technically be implemented under reasonable software-system constraints.
 
-## Score 1
+**Boundary (preserve):** difficulty, expense, or missing detail alone do not
+lower feasibility. Only a clear technical impossibility or unrealistic
+guarantee does.
 
-Give `feasibility = 1` when there is no clear technical impossibility or
-unrealistic guarantee in the requirement.
+## Grade anchors
 
-A requirement should not receive a feasibility score of 0 simply because
-it is difficult, expensive, or missing some details.
+- **5** — No clear technical impossibility or unrealistic guarantee.
 
-### Example
+  > For each successful payment, the service shall store its transaction ID.
 
-> For each successful payment, the service shall store its transaction ID.
+  Technically achievable. Feasibility = 5.
 
-This behavior is technically achievable.
+- **3** — Achievable but relies on an implicit assumption or edge case that,
+  if taken literally, strains realism without being outright impossible.
 
-Feasibility = 1
+- **0** — Demands something technically impossible, logically contradictory,
+  or unrealistic under its own stated constraints.
 
-## Score 0
+  > The service shall reconstruct every possible 1 MiB file solely from its
+  > 256-bit hash without access to any other information.
 
-Give `feasibility = 0` when the requirement demands something technically
-impossible, logically contradictory, or unrealistic under its stated
-constraints.
-
-### Example
-
-> The service shall reconstruct every possible 1 MiB file solely from its
-> 256-bit hash without access to any other information.
-
-This cannot be guaranteed for every possible file because different files
-can map to the same finite hash space.
-
-Feasibility = 0
+  Cannot be guaranteed for every possible file — the hash space is smaller
+  than the file space. Feasibility = 0.
 
 ---
 
@@ -187,49 +162,32 @@ Feasibility = 0
 ## Definition
 
 A requirement is clear when its wording has one understandable
-interpretation.
+interpretation — actor, action, references, conditions, and expected
+behavior are not materially ambiguous.
 
-The actor, action, references, conditions, and expected behavior should
-not be materially ambiguous.
+**Boundary (preserve):** standard technical terminology (e.g. HTTP status
+codes) does not need to be redefined to be clear.
 
-## Score 1
+## Grade anchors
 
-Give `clarity = 1` when the requirement has one reasonable interpretation.
+- **5** — One reasonable interpretation.
 
-Standard technical terminology such as HTTP status codes does not need to
-be redefined.
+  > The profile page shall display the signed-in user's stored display name.
 
-### Example
+  Actor and expected information are clear. Clarity = 5.
 
-> The profile page shall display the signed-in user's stored display name.
+- **3** — The primary actor/action is clear but one reference or term
+  ("their," "last month," "relevant," "ordered by price" with no direction)
+  admits more than one reasonable reading without derailing the rest.
 
-The actor and expected information are clearly identified.
+- **0** — Wording can reasonably be read multiple ways, or contains
+  ambiguous references.
 
-Clarity = 1
+  > When an administrator sends a message to an account owner, the
+  > dashboard shall display their name.
 
-## Score 0
-
-Give `clarity = 0` when wording can reasonably be interpreted in multiple
-ways or contains ambiguous references.
-
-### Example
-
-> When an administrator sends a message to an account owner, the dashboard
-> shall display their name.
-
-"Their name" could refer to either the administrator or the account owner.
-
-Clarity = 0
-
-Other examples of potentially unclear wording include:
-
-- last month
-- appropriate
-- their
-- ordered by price without specifying direction
-- relevant information
-
-when the intended meaning cannot be determined from the requirement.
+  "Their name" could mean the administrator or the account owner.
+  Clarity = 0.
 
 ---
 
@@ -237,95 +195,77 @@ when the intended meaning cannot be determined from the requirement.
 
 ## Definition
 
-A requirement is complete when it contains enough information to
-understand and verify the behavior within the scope of that requirement.
+A requirement is complete when it contains the information needed to
+understand and verify the behavior within its own stated scope — it does not
+need to describe the entire system, only what its own obligation requires.
 
-The requirement does not need to describe the entire system.
+**Boundary (preserve):** completeness is judged only within the
+requirement's stated scope. Do not penalize it for omitting detail that
+belongs to a different requirement or an implementation decision.
 
-It only needs to contain the information necessary for its stated
-behavior.
+## Grade anchors
 
-## Score 1
+- **5** — All essential information for the stated behavior is present.
 
-Give `completeness = 1` when all essential information required to
-understand and accept the stated behavior is provided.
+  > The audit service shall retain each login event for 30 days after the
+  > event timestamp.
 
-### Example
+  Retention period is given. Completeness = 5.
 
-> The audit service shall retain each login event for 30 days after the
-> event timestamp.
+- **3** — The core behavior is specified but one essential parameter
+  (threshold, format, retention period, acceptance target) is missing while
+  the rest of the obligation is otherwise understandable.
 
-The required retention period is provided.
+- **0** — Essential information is missing — timing thresholds, maximum
+  values, output formats, retention periods, acceptance targets.
 
-Completeness = 1
+  > The audit service shall retain each login event for a specified
+  > retention period.
 
-## Score 0
-
-Give `completeness = 0` when essential information is missing.
-
-Examples include:
-
-- missing timing thresholds
-- unspecified maximum values
-- unspecified output formats
-- missing retention periods
-- undefined acceptance targets
-
-### Example
-
-> The audit service shall retain each login event for a specified retention
-> period.
-
-The actual retention period is missing.
-
-Completeness = 0
+  The actual retention period is missing. Completeness = 0.
 
 ---
 
 # Independent Evaluation of Criteria
 
-The five criteria must be evaluated independently.
-
-A problem may affect more than one criterion.
-
-For example:
+The five criteria must be evaluated independently; a requirement may score
+differently across them.
 
 > The dashboard shall load quickly after the user signs in.
 
 Possible evaluation:
 
-- Atomicity = 1
+- Atomicity = 5
 - Testability = 0
-- Feasibility = 1
-- Clarity = 0
-- Completeness = 0
+- Feasibility = 5
+- Clarity = 2
+- Completeness = 1
 
-Gold score:
-
-1 + 0 + 1 + 0 + 0 = 2
-
-Therefore:
-
-gold_score = 2
+```
+overall_score = (5 + 0 + 5 + 2 + 1) / 5 = 2.6
+```
 
 ---
 
-# Golden Dataset Format
-
-Each item in `golden_set.jsonl` follows this structure:
+# Golden Dataset Format (scheme `grade_0_5_v1`)
 
 ```json
 {
   "id": "REQ-001",
   "requirement": "Requirement text",
+  "scheme": "grade_0_5_v1",
   "criteria": {
-    "atomicity": 1,
-    "testability": 1,
-    "feasibility": 1,
-    "clarity": 1,
-    "completeness": 1
+    "atomicity": 5,
+    "testability": 5,
+    "feasibility": 5,
+    "clarity": 5,
+    "completeness": 5
   },
-  "gold_score": 5,
+  "gold_score": 5.0,
   "split": "dev"
 }
 ```
+
+A row without a `scheme` field (or with any other `scheme` value) carries no
+usable gold grades under this convention and must not be read as one — see
+`harness/schemas.py:validate_gold_criteria` and the runner's dataset loader.

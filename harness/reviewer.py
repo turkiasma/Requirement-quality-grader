@@ -1,109 +1,53 @@
+"""LLM1: independently grades the original requirement on five criteria.
+
+Outputs five 0-5 grades with explanations only -- no rewrite, no
+self-computed total. The harness (harness.scorer) computes the overall
+score deterministically from these grades.
+"""
+
+import os
 from pathlib import Path
 
-from ollama import Client
+from harness.llm_client import call_structured
+from harness.schemas import LLM1Output
 
-from harness.schemas import RequirementCritique
 
+# Default OpenRouter model used for requirement grading; override with
+# REVIEWER_MODEL if needed.
+DEFAULT_MODEL = os.environ.get('REVIEWER_MODEL', 'openai/gpt-4o-mini')
 
-# Default local model used for requirement reviews
-DEFAULT_MODEL = "qwen3:8b"
-# Bound an unresponsive local request rather than waiting indefinitely.
-chat = Client(timeout=180).chat
-
-# Path to the current reviewer prompt
-PROMPT_PATH = (
-    Path(__file__).parent.parent
-    / "prompts"
-    / "critique_prompt_v3.txt"
-)
-GUIDE_PATH = Path(__file__).resolve().parent.parent / "data" / "labelling_guide.md"
+ROOT = Path(__file__).resolve().parent.parent
+PROMPT_PATH = ROOT / 'prompts' / 'critique_prompt_v4.txt'
+GUIDE_PATH = ROOT / 'data' / 'labelling_guide.md'
 
 
 def load_prompt() -> str:
-    """
-    Load the reviewer instructions and the guide's criterion decision rules.
-    """
-
+    """Load the grading instructions plus the full criterion guide."""
     if not PROMPT_PATH.exists():
-        raise FileNotFoundError(
-            f"Prompt file not found: {PROMPT_PATH}"
-        )
-
-    guide = GUIDE_PATH.read_text(encoding="utf-8")
-    _, start, definitions = guide.partition("## 1. Atomicity")
-    definitions, end, _ = definitions.partition("## Critique Scoring Rubric")
-    if not start or not end:
-        raise ValueError("Labelling guide is missing criterion or scoring section headings.")
-    definitions = "\n\n".join(
-        paragraph for paragraph in (start + definitions).split("\n\n")
-        if not paragraph.lstrip().startswith("For the initial dev pilot,")
-    )
-    return (
-        PROMPT_PATH.read_text(encoding="utf-8")
-        + "\n\nCriterion definitions and boundary rules:\n" + definitions
-    )
+        raise FileNotFoundError(f'Prompt file not found: {PROMPT_PATH}')
+    if not GUIDE_PATH.exists():
+        raise FileNotFoundError(f'Guide file not found: {GUIDE_PATH}')
+    guide = GUIDE_PATH.read_text(encoding='utf-8')
+    return PROMPT_PATH.read_text(encoding='utf-8') + '\n\nCriterion guide:\n' + guide
 
 
-def review_requirement(
-    requirement: str,
-    model: str = DEFAULT_MODEL
-) -> RequirementCritique:
-    """
-    Review one software requirement using a local Ollama model.
+def grade_requirement(requirement: str, model: str = DEFAULT_MODEL):
+    """Grade one software requirement on the five criteria via the OpenRouter API.
 
     Args:
-        requirement:
-            The software requirement to review.
-
-        model:
-            Ollama model to use.
-            Default: qwen3:8b
+        requirement: The software requirement to grade.
+        model: OpenRouter model id. Default: openai/gpt-4o-mini.
 
     Returns:
-        RequirementCritique:
-            Structured critique containing detected issues
-            and an improved requirement.
+        (LLM1Output, metadata) -- metadata carries latency and token usage.
     """
-
-    # Validate input
     if not requirement or not requirement.strip():
-        raise ValueError("Requirement cannot be empty.")
+        raise ValueError('Requirement cannot be empty.')
 
-    try:
-        response = chat(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": load_prompt()
-                },
-                {
-                    "role": "user",
-                    "content": requirement.strip()
-                }
-            ],
-
-            # Force the model to follow our Pydantic JSON schema
-            format=RequirementCritique.model_json_schema(),
-
-            # Return the structured answer without a separate thinking phase.
-            think=False,
-
-            # Low temperature for more reproducible evaluation
-            options={
-                "temperature": 0,
-                "num_predict": 1024,
-            }
-        )
-
-        # Validate the returned JSON against our schema
-        critique = RequirementCritique.model_validate_json(
-            response.message.content
-        )
-
-        return critique
-
-    except Exception as error:
-        raise RuntimeError(
-            f"Requirement review failed using model '{model}': {error}"
-        ) from error
+    return call_structured(
+        model=model,
+        system=load_prompt(),
+        user=requirement.strip(),
+        schema_model=LLM1Output,
+        max_tokens=1024,
+    )

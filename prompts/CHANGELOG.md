@@ -1,5 +1,45 @@
 # Prompt Changelog
 
+## Version 4 — 0-5 grade anchors, second assessor replaces answer-quality judge
+
+- Rebuilt the scoring contract entirely: five criteria now each receive an
+  integer grade 0-5 against the guide's grade-anchor table, not a binary
+  violation flag. `overall_score = sum(5 grades)/5`, computed by
+  `harness.scorer`, never by a model.
+- LLM1 (`critique_prompt_v4.txt`, `harness/reviewer.py`): emits the five
+  grades + explanations only. The `improved_requirement` rewrite is removed
+  from the active workflow.
+- The second assessor (`judge_prompt_v4.txt`, `harness/judge.py`) replaces
+  the old 1-5 answer-quality rubric. It independently grades the original
+  requirement, treating LLM1's proposal as a challengeable input, and
+  receives **no human reference data** -- no gold grades, no gold total, no
+  comparison results. It emits its own five grades, each marked retained or
+  corrected with a reason.
+- New comparison logic in `harness/scorer.py`: `compare_to_human` (exact/
+  within-1/MAE/overall-error against gold) and `correction_direction`
+  (per-criterion closer/farther/equal classification of the second
+  assessor's grade relative to LLM1's, against the human reference) --
+  measures whether the second stage actually helps instead of assuming it.
+- Dataset rows now carry an explicit `scheme: "grade_0_5_v1"` marker
+  alongside `criteria`/`gold_score`; the loader rejects any row where
+  `scheme` is missing or doesn't match, rather than reinterpreting the old
+  binary `violations` convention as grades. `data/golden_set.jsonl` (old
+  scheme) is left as historical data; `data/golden_set_pending.jsonl` carries
+  the same 20 requirement texts with no gold yet, for live runs until
+  re-labelling under the new scheme is done.
+- Model calls moved from local Ollama to the OpenRouter API
+  (`harness/llm_client.py`), default model `openai/gpt-4o-mini`, configurable
+  via `REVIEWER_MODEL`/`ASSESSOR_MODEL`. API key read from `OPENROUTER_API_KEY`
+  (local `.env`, gitignored) -- never committed.
+- Tests rewritten against synthetic fixtures (`tests/test_schemas.py` is new).
+  They verify pipeline behaviour -- leakage prevention, scheme-version
+  rejection, aggregation math, stage-failure handling -- not model quality or
+  human agreement, since re-labelled human data doesn't exist yet.
+- Not yet done: the 20-item pilot re-labelled by two humans under the new
+  scheme, the reliability report (human agreement, position/verbosity bias,
+  cost/latency), and the 150+ item expansion. See
+  `docs/IMPLEMENTATION_PLAN.md`.
+
 ## Version 3 — scoped critiques and evidence-based judging
 
 - Reviewer now receives the guide's criterion definitions, examples, and boundary

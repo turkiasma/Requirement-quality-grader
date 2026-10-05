@@ -1,78 +1,51 @@
-import json
-from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from harness.reviewer import GUIDE_PATH, PROMPT_PATH, load_prompt, review_requirement
-from harness.schemas import CRITERIA, RequirementCritique
+from harness.reviewer import GUIDE_PATH, PROMPT_PATH, load_prompt, grade_requirement
+from harness.schemas import CRITERIA, LLM1Output
+
+
+def payload(grade=5):
+    return {'criteria': {key: {'grade': grade, 'explanation': 'A specific reason.'} for key in CRITERIA}}
 
 
 class ReviewerTests(unittest.TestCase):
-    @patch('harness.reviewer.chat')
-    def test_canonical_response_and_request(self, chat):
-        payload = {
-            'issues': [{'criterion': key, 'explanation': 'A specific issue.'}
-                       for key in CRITERIA],
-            'improved_requirement': 'Clarified requirement.',
-        }
-        chat.return_value = SimpleNamespace(
-            message=SimpleNamespace(content=json.dumps(payload)))
-        result = review_requirement('  Original requirement.  ')
-        self.assertEqual(result.model_dump(), payload)
-        request = chat.call_args.kwargs
-        self.assertEqual(request['model'], 'qwen3:8b')
-        self.assertEqual(request['options'], {'temperature': 0, 'num_predict': 1024})
-        self.assertFalse(request['think'])
-        self.assertEqual(request['format'], RequirementCritique.model_json_schema())
-        self.assertEqual(request['messages'][1]['content'], 'Original requirement.')
-        self.assertIn('atomic:', request['messages'][0]['content'])
+    @patch('harness.reviewer.call_structured')
+    def test_valid_response_and_request_shape(self, call_structured):
+        output = LLM1Output.model_validate(payload())
+        call_structured.return_value = (output, {'model': 'x', 'latency_seconds': 0.1})
+        result, meta = grade_requirement('  Original requirement.  ')
+        self.assertEqual(result, output)
+        self.assertEqual(meta['latency_seconds'], 0.1)
+        kwargs = call_structured.call_args.kwargs
+        self.assertEqual(kwargs['user'], 'Original requirement.')
+        self.assertIs(kwargs['schema_model'], LLM1Output)
+        self.assertIn('atomicity', kwargs['system'])
+        self.assertNotIn('improved_requirement', kwargs['system'])
 
-    @patch('harness.reviewer.chat')
-    def test_old_and_unknown_criteria_rejected(self, chat):
-        for key in ('atomicity', 'testability', 'feasibility', 'completeness', 'other'):
-            with self.subTest(criterion=key):
-                chat.return_value = SimpleNamespace(message=SimpleNamespace(
-                    content=json.dumps({'issues': [{'criterion': key, 'explanation': 'x'}],
-                                        'improved_requirement': 'x'})))
-                with self.assertRaises(RuntimeError):
-                    review_requirement('Original requirement.')
-
-    @patch('harness.reviewer.chat')
-    def test_good_requirement(self, chat):
-        requirement = 'The API shall return HTTP 401 for an incorrect password.'
-        chat.return_value = SimpleNamespace(message=SimpleNamespace(content=json.dumps({
-            'issues': [], 'improved_requirement': requirement})))
-        self.assertEqual(review_requirement(requirement).issues, [])
-
-    @patch('harness.reviewer.chat')
-    def test_empty_input_does_not_call_model(self, chat):
+    @patch('harness.reviewer.call_structured')
+    def test_empty_input_does_not_call_model(self, call_structured):
         with self.assertRaises(ValueError):
-            review_requirement('   ')
-        chat.assert_not_called()
+            grade_requirement('   ')
+        call_structured.assert_not_called()
 
-    @patch('harness.reviewer.chat')
-    def test_v3_request_includes_definitions_but_not_rubric_or_pilot_labels(self, chat):
-        chat.return_value = SimpleNamespace(message=SimpleNamespace(content=json.dumps({
-            'issues': [], 'improved_requirement': 'Original requirement.'})))
-        review_requirement('Original requirement.')
-        system = chat.call_args.kwargs['messages'][0]['content']
-        self.assertEqual(PROMPT_PATH.name, 'critique_prompt_v3.txt')
+    def test_prompt_includes_full_guide_and_criteria(self):
+        system = load_prompt()
         self.assertIn(PROMPT_PATH.read_text(encoding='utf-8'), system)
-        guide = GUIDE_PATH.read_text(encoding='utf-8')
-        definitions = '## 1. Atomicity' + guide.split('## 1. Atomicity', 1)[1]
-        definitions = definitions.split('## Critique Scoring Rubric', 1)[0]
-        for paragraph in definitions.split('\n\n'):
-            if not paragraph.lstrip().startswith('For the initial dev pilot,'):
-                self.assertIn(paragraph, system)
-        self.assertNotIn('REQ-001', system)
-        self.assertNotIn('## Critique Scoring Rubric', system)
-        self.assertNotIn('### Score 5', system)
+        self.assertIn(GUIDE_PATH.read_text(encoding='utf-8'), system)
+        for key in CRITERIA:
+            self.assertIn(key, system)
 
     @patch('harness.reviewer.GUIDE_PATH')
-    def test_missing_guide_sections_fail_explicitly(self, guide_path):
-        guide_path.read_text.return_value = '# An incomplete guide'
-        with self.assertRaisesRegex(ValueError, 'missing criterion or scoring'):
+    def test_missing_guide_fails_explicitly(self, guide_path):
+        guide_path.exists.return_value = False
+        with self.assertRaises(FileNotFoundError):
             load_prompt()
+
+    @patch('harness.reviewer.call_structured', side_effect=RuntimeError('Offline'))
+    def test_transport_error_is_explicit(self, call_structured):
+        with self.assertRaisesRegex(RuntimeError, 'Offline'):
+            grade_requirement('Original requirement.')
 
 
 if __name__ == '__main__':

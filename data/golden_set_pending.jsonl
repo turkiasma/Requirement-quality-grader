@@ -1,0 +1,20 @@
+{"id": "REQ-001", "requirement": "When a user submits an incorrect password for an existing account, the login API shall return HTTP 401.", "split": "dev"}
+{"id": "REQ-002", "requirement": "The file-upload API shall reject any file larger than 10,485,760 bytes with HTTP 413.", "split": "dev"}
+{"id": "REQ-003", "requirement": "When an authenticated user requests their profile through GET /profile, the API shall return HTTP 200 with a JSON object containing that user’s stored display_name and email values.", "split": "dev"}
+{"id": "REQ-004", "requirement": "For each successful card payment, the payments service shall store a receipt containing the transaction ID, amount in minor currency units, and ISO 4217 currency code.", "split": "dev"}
+{"id": "REQ-005", "requirement": "When an administrator sends a message to an account owner, the dashboard shall display their name beside the message.", "split": "dev"}
+{"id": "REQ-006", "requirement": "The transaction report shall list payments made during the last month.", "split": "dev"}
+{"id": "REQ-007", "requirement": "The notification service shall send a reminder 24 hours before the appointment unless it is disabled.", "split": "dev"}
+{"id": "REQ-008", "requirement": "The search endpoint shall return the first 10 matching products ordered by price.", "split": "dev"}
+{"id": "REQ-009", "requirement": "The checkout page shall be easy to use for first-time customers.", "split": "dev"}
+{"id": "REQ-010", "requirement": "The dashboard shall load quickly after the user signs in.", "split": "dev"}
+{"id": "REQ-011", "requirement": "The mobile application’s notification sounds shall be pleasant to users.", "split": "dev"}
+{"id": "REQ-012", "requirement": "The audit service shall retain each login event for a specified retention period.", "split": "dev"}
+{"id": "REQ-013", "requirement": "When a user selects Export on the monthly sales report, the system shall generate a file in the required format.", "split": "dev"}
+{"id": "REQ-014", "requirement": "The profile API shall reject a display name with HTTP 400 if its length exceeds the configured maximum, which has not yet been specified.", "split": "dev"}
+{"id": "REQ-015", "requirement": "The login API shall return HTTP 401 for an incorrect password, and the reports API shall return monthly sales totals in CSV format.", "split": "dev"}
+{"id": "REQ-016", "requirement": "The profile page shall display the user’s stored display name, and the admin dashboard shall display the total number of registered accounts.", "split": "dev"}
+{"id": "REQ-017", "requirement": "The storage service shall losslessly encode every possible 1,024-byte file into a payload of at most 512 bytes and reconstruct the original file solely from that payload.", "split": "dev"}
+{"id": "REQ-018", "requirement": "The recovery service shall reconstruct every possible 1 MiB file solely from its 256-bit hash, without access to any other information about the file.", "split": "dev"}
+{"id": "REQ-019", "requirement": "The platform shall process payments instantly and generate useful reports.", "split": "dev"}
+{"id": "REQ-020", "requirement": "The mobile application shall automatically notify them when appropriate and keep every user’s profile up to date.", "split": "dev"}

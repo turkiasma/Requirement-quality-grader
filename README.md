@@ -1,15 +1,28 @@
 # Requirement Quality Grader
 
-AI Engineering project for evaluating LLM-generated critiques of software requirements.
+AI Engineering project for evaluating software requirement quality with two
+independent LLM assessors, checked against human ground truth.
 
 ## Task
 
-Given a software requirement, the system:
-1. Identifies violated requirement-quality criteria.
-2. Explains each detected issue.
-3. Proposes an improved requirement.
+Given a software requirement, two independent models each grade it against
+five quality criteria on a 0-5 scale:
+
+1. LLM1 grades the requirement and explains each grade.
+2. A second assessor independently grades the same requirement, treating
+   LLM1's grades as a challengeable proposal it may retain or correct. It
+   never sees human reference data.
+3. The harness deterministically computes `overall_score = sum(5 grades)/5`
+   for both, and compares both against the human reference where available.
+
+This measures agreement on **requirement quality** — it is not a judge that
+grades the quality of LLM1's answers. See `docs/IMPLEMENTATION_PLAN.md` for
+the full design and open items.
 
 ## Quality Criteria
+
+Each graded 0 (fundamentally fails) to 5 (fully satisfies), per
+`data/labelling_guide.md`:
 
 - Atomicity
 - Testability
@@ -19,21 +32,39 @@ Given a software requirement, the system:
 
 ## Evaluation Pipeline
 
-Requirement → Human-labelled golden set → LLM critique system → LLM judge → Evaluation against human judgement
+```
+Requirement → LLM1 (5 grades + explanations)
+            → Second assessor (verify/correct LLM1's grades)
+            → Harness (deterministic totals + human comparison)
+```
 
 ## Project Structure
 
-- `data/` — golden dataset and labelling guide
-- `prompts/` — system and judge prompts
-- `harness/` — evaluation pipeline
-- `results/` — evaluation outputs
-- `tests/` — tests
+- `data/` — golden dataset(s) and labelling guide
+- `prompts/` — versioned prompts + `CHANGELOG.md`
+- `harness/` — evaluation pipeline (`reviewer.py`=LLM1, `judge.py`=second
+  assessor, `scorer.py`=deterministic aggregation/comparison,
+  `llm_client.py`=shared OpenRouter client, `schemas.py`, `runner.py`)
+- `results/` — evaluation outputs, one row per item per run
+- `tests/` — synthetic-fixture tests (pipeline behaviour, not model quality)
+- `docs/IMPLEMENTATION_PLAN.md` — design, gap analysis, open items
 
-Golden-set labels use binary criterion violations: `true` means a problem is present, and `false` means the criterion is satisfied. The current 20 examples are an initial dev pilot with provisional labels awaiting human review. The final project will contain 150+ double-labelled requirements.
+## Dataset status
+
+`data/golden_set.jsonl` (20 items) uses the **old binary scheme** and is kept
+as historical data only — the runner rejects it outright rather than
+reinterpreting its 0/1 values as 0-5 grades.
+
+`data/golden_set_pending.jsonl` carries the same 20 requirement texts with
+**no gold grades yet** — LLM1 and the second assessor run on it today; the
+human-comparison fields are simply skipped until the 20-item pilot is
+re-labelled by two humans under the `grade_0_5_v1` scheme (see
+`docs/IMPLEMENTATION_PLAN.md` §4). The final project will contain 150+
+double-labelled requirements under this scheme.
 
 ## Setup
 
-Use Python 3.10+ and install the Python dependencies in a virtual environment:
+Use Python 3.10+ and install dependencies in a virtual environment:
 
 ```sh
 python3 -m venv .venv
@@ -41,57 +72,64 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-For live runs, install and start Ollama separately, then download the default model:
+Model calls go through the OpenRouter API. Put your key in a local `.env`
+(gitignored, never commit it) — copy `.env.example` and fill it in:
 
 ```sh
-ollama pull qwen3:8b
+cp .env.example .env
+# edit .env: OPENROUTER_API_KEY=sk-or-...
 ```
 
-## Run the development pipeline
+Default model is `openai/gpt-4o-mini` for both LLM1 and the second assessor;
+override with the `REVIEWER_MODEL` / `ASSESSOR_MODEL` environment variables.
 
-From the repository root with the virtual environment activated:
+## Run the pipeline
 
 ```sh
 python -m harness.runner
 ```
 
-For a quick live check of just one development requirement:
+Runs every `dev`-split item in `data/golden_set.jsonl` by default. Point it
+at the gold-pending dataset instead for a live run today:
+
+```python
+from harness.runner import run
+run(data_path='data/golden_set_pending.jsonl')
+```
+
+For a quick check of one item:
 
 ```sh
 python -m harness.runner --limit 1
 ```
 
-The terminal shows the results path and input immediately, then the reviewer
-output as soon as it finishes, followed by the scorer and judge score/reason.
-Waiting messages identify the active model stage. Each saved JSONL row contains
-the complete result; Ctrl+C also saves available outputs for the interrupted item.
-Qwen thinking is explicitly disabled for these structured responses. Each model
-request has a 180-second network timeout, with generation capped at 1,024 tokens
-for the reviewer and 512 for the judge. Invalid or truncated JSON is an error,
-not a grade. These limits do not guarantee a particular total run duration.
+The terminal shows the requirement, gold criteria (or "pending"), LLM1's
+output and overall score, the second assessor's output and overall score,
+and the human-comparison result when gold is available. Each saved JSONL row
+in `results/` contains the full record — both model outputs, both computed
+scores, the comparison, per-call latency/model metadata, and status/error.
+Human reference grades are included in the saved record but are **never**
+sent in a model request (structurally enforced — see
+`harness/judge.py:assess_requirement`'s signature and
+`harness/schemas.py:LLM1Output`'s `extra='forbid'`).
 
-Each development item is reviewed once and independently judged once. The scorer
-compares predicted criteria with golden violations, reporting correct, missed,
-incorrect, and correctly unflagged criteria plus TP/FN/FP/TN counts and exact match.
-The reviewer receives the guide's criterion definitions and boundary rules, with
-the critique-scoring rubric and pilot label assignments excluded. The judge
-receives the requirement, critique, and labelling guide and returns a
-validated 1–5 `score` and `reason`. Golden labels and scorer results are not sent to
-it; the guide's paragraph revealing pilot category assignments is also excluded.
+Ctrl+C saves whatever stage completed for the in-progress item before
+stopping. Existing run files are never overwritten.
 
-The runner prints the input and both evaluations, saves one row per item in a new
-`results/pipeline_v3_<timestamp>_<suffix>.jsonl` file, and prints completion/failure
-counts. Stage errors preserve available outputs and are not numeric grades.
-Only `dev` rows are processed; existing run files are never overwritten.
-
-## Tests and current limits
+## Tests
 
 ```sh
 python -m unittest discover -s tests
 ```
 
-Tests mock model calls and use temporary output directories; they require no
-running Ollama server. They verify implementation behaviour, not model quality.
-The active prompts are version 3; versions 1 and 2 remain available for reference.
-Human agreement, judge reliability, bias studies, aggregate quality metrics,
-and the final report remain future work.
+Tests use synthetic fixtures and mock model calls — no API key or network
+access required. They verify pipeline behavior (leakage prevention, dataset
+scheme-version rejection, aggregation math, stage-failure handling), not
+model quality or human agreement.
+
+## Current limits
+
+No human agreement, judge reliability, bias studies, or aggregate quality
+metrics have been measured yet — real re-labelled human data under
+`grade_0_5_v1` doesn't exist. See `docs/IMPLEMENTATION_PLAN.md` for what's
+left before those can be reported.
