@@ -1,0 +1,55 @@
+{
+  "items": 150,
+  "splits": {
+    "dev": 20,
+    "test": 130
+  },
+  "annotation_status": {
+    "proposed": 150
+  },
+  "grade_distributions": {
+    "atomicity": {
+      "5": 134,
+      "0": 3,
+      "2": 4,
+      "3": 6,
+      "4": 2,
+      "1": 1
+    },
+    "testability": {
+      "5": 91,
+      "4": 8,
+      "3": 12,
+      "0": 20,
+      "1": 13,
+      "2": 6
+    },
+    "feasibility": {
+      "5": 131,
+      "0": 9,
+      "2": 3,
+      "1": 5,
+      "3": 1,
+      "4": 1
+    },
+    "clarity": {
+      "5": 92,
+      "3": 29,
+      "2": 15,
+      "1": 9,
+      "0": 3,
+      "4": 2
+    },
+    "completeness": {
+      "5": 83,
+      "4": 10,
+      "3": 19,
+      "2": 21,
+      "1": 14,
+      "0": 3
+    }
+  },
+  "unique_ids": 150,
+  "unique_texts": 150,
+  "note": "Schema and uniqueness validation only. Semantic correctness requires human review; no test-set model calls performed."
+}

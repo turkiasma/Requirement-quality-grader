@@ -1,0 +1,39 @@
+{
+  "interpretation": "Auxiliary pairwise position sensitivity, not production single-assessment bias.",
+  "cases": 6,
+  "valid": 6,
+  "failed": 0,
+  "preference_reversal": {
+    "count": 0,
+    "denominator": 3,
+    "percent": 0.0
+  },
+  "identity_or_tie_change": {
+    "count": 0,
+    "denominator": 6,
+    "percent": 0.0
+  },
+  "tie_change": {
+    "count": 0,
+    "denominator": 6,
+    "percent": 0.0
+  },
+  "first_position_preference": {
+    "count": 3,
+    "denominator": 6,
+    "percent": 50.0
+  },
+  "inconsistent_case_ids": [],
+  "usage": {
+    "calls_recorded": 12,
+    "costed_calls": 12,
+    "unknown_cost_calls": 0,
+    "estimated_cost_usd": 0.0043524,
+    "unknown_cost_reservations_usd": 0,
+    "prompt_tokens": 26428,
+    "completion_tokens": 647,
+    "total_tokens": 27075,
+    "summed_latency_seconds": 15.352944169002512
+  },
+  "source_sha256": "ab391429a31790ed8351cce5648239c944ebe2d8cc0318f53915c187cb0f825c"
+}

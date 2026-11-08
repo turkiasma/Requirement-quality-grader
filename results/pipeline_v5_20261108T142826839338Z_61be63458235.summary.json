@@ -1,0 +1,335 @@
+{
+  "result_version": "summary_v1",
+  "items": 20,
+  "groups": {
+    "dev/proposed": {
+      "interpretation": "provisional AI-reference comparison",
+      "items": 20,
+      "failed": {
+        "count": 0,
+        "denominator": 20,
+        "percent": 0.0
+      },
+      "llm1": {
+        "valid": 20,
+        "unavailable": 0,
+        "per_criterion": {
+          "atomicity": {
+            "exact": {
+              "count": 11,
+              "denominator": 20,
+              "percent": 55.0
+            },
+            "within_one": {
+              "count": 17,
+              "denominator": 20,
+              "percent": 85.0
+            },
+            "disagreement": {
+              "count": 9,
+              "denominator": 20,
+              "percent": 45.0
+            },
+            "mae": 0.65
+          },
+          "testability": {
+            "exact": {
+              "count": 7,
+              "denominator": 20,
+              "percent": 35.0
+            },
+            "within_one": {
+              "count": 15,
+              "denominator": 20,
+              "percent": 75.0
+            },
+            "disagreement": {
+              "count": 13,
+              "denominator": 20,
+              "percent": 65.0
+            },
+            "mae": 1.2
+          },
+          "feasibility": {
+            "exact": {
+              "count": 15,
+              "denominator": 20,
+              "percent": 75.0
+            },
+            "within_one": {
+              "count": 20,
+              "denominator": 20,
+              "percent": 100.0
+            },
+            "disagreement": {
+              "count": 5,
+              "denominator": 20,
+              "percent": 25.0
+            },
+            "mae": 0.25
+          },
+          "clarity": {
+            "exact": {
+              "count": 7,
+              "denominator": 20,
+              "percent": 35.0
+            },
+            "within_one": {
+              "count": 10,
+              "denominator": 20,
+              "percent": 50.0
+            },
+            "disagreement": {
+              "count": 13,
+              "denominator": 20,
+              "percent": 65.0
+            },
+            "mae": 1.15
+          },
+          "completeness": {
+            "exact": {
+              "count": 8,
+              "denominator": 20,
+              "percent": 40.0
+            },
+            "within_one": {
+              "count": 15,
+              "denominator": 20,
+              "percent": 75.0
+            },
+            "disagreement": {
+              "count": 12,
+              "denominator": 20,
+              "percent": 60.0
+            },
+            "mae": 0.9
+          }
+        },
+        "overall": {
+          "mae": 0.57,
+          "mean_signed_error": 0.1899999999999999,
+          "exact": {
+            "count": 5,
+            "denominator": 20,
+            "percent": 25.0
+          },
+          "tolerance": 0.2,
+          "within_tolerance": {
+            "count": 7,
+            "denominator": 20,
+            "percent": 35.0
+          },
+          "all_five_match": {
+            "count": 4,
+            "denominator": 20,
+            "percent": 20.0
+          }
+        }
+      },
+      "judge": {
+        "valid": 20,
+        "unavailable": 0,
+        "per_criterion": {
+          "atomicity": {
+            "exact": {
+              "count": 11,
+              "denominator": 20,
+              "percent": 55.0
+            },
+            "within_one": {
+              "count": 17,
+              "denominator": 20,
+              "percent": 85.0
+            },
+            "disagreement": {
+              "count": 9,
+              "denominator": 20,
+              "percent": 45.0
+            },
+            "mae": 0.65
+          },
+          "testability": {
+            "exact": {
+              "count": 8,
+              "denominator": 20,
+              "percent": 40.0
+            },
+            "within_one": {
+              "count": 13,
+              "denominator": 20,
+              "percent": 65.0
+            },
+            "disagreement": {
+              "count": 12,
+              "denominator": 20,
+              "percent": 60.0
+            },
+            "mae": 1.2
+          },
+          "feasibility": {
+            "exact": {
+              "count": 17,
+              "denominator": 20,
+              "percent": 85.0
+            },
+            "within_one": {
+              "count": 19,
+              "denominator": 20,
+              "percent": 95.0
+            },
+            "disagreement": {
+              "count": 3,
+              "denominator": 20,
+              "percent": 15.0
+            },
+            "mae": 0.2
+          },
+          "clarity": {
+            "exact": {
+              "count": 7,
+              "denominator": 20,
+              "percent": 35.0
+            },
+            "within_one": {
+              "count": 10,
+              "denominator": 20,
+              "percent": 50.0
+            },
+            "disagreement": {
+              "count": 13,
+              "denominator": 20,
+              "percent": 65.0
+            },
+            "mae": 1.15
+          },
+          "completeness": {
+            "exact": {
+              "count": 7,
+              "denominator": 20,
+              "percent": 35.0
+            },
+            "within_one": {
+              "count": 15,
+              "denominator": 20,
+              "percent": 75.0
+            },
+            "disagreement": {
+              "count": 13,
+              "denominator": 20,
+              "percent": 65.0
+            },
+            "mae": 1.05
+          }
+        },
+        "overall": {
+          "mae": 0.65,
+          "mean_signed_error": 0.06999999999999991,
+          "exact": {
+            "count": 4,
+            "denominator": 20,
+            "percent": 20.0
+          },
+          "tolerance": 0.2,
+          "within_tolerance": {
+            "count": 6,
+            "denominator": 20,
+            "percent": 30.0
+          },
+          "all_five_match": {
+            "count": 4,
+            "denominator": 20,
+            "percent": 20.0
+          }
+        }
+      },
+      "corrections": {
+        "paired_requirements": 20,
+        "retained": {
+          "count": 88,
+          "denominator": 100,
+          "percent": 88.0
+        },
+        "corrected": {
+          "count": 12,
+          "denominator": 100,
+          "percent": 12.0
+        },
+        "closer": {
+          "count": 5,
+          "denominator": 12,
+          "percent": 41.666666666666664
+        },
+        "farther": {
+          "count": 7,
+          "denominator": 12,
+          "percent": 58.333333333333336
+        },
+        "equal_error_corrections": {
+          "count": 0,
+          "denominator": 12,
+          "percent": 0.0
+        },
+        "overall_error": {
+          "improved": {
+            "count": 1,
+            "denominator": 20,
+            "percent": 5.0
+          },
+          "worsened": {
+            "count": 6,
+            "denominator": 20,
+            "percent": 30.0
+          },
+          "unchanged": {
+            "count": 13,
+            "denominator": 20,
+            "percent": 65.0
+          }
+        }
+      }
+    }
+  },
+  "usage": {
+    "calls_recorded": 40,
+    "costed_calls": 40,
+    "unknown_cost_calls": 0,
+    "estimated_cost_usd": 0.01277115,
+    "unknown_cost_reservations_usd": 0,
+    "prompt_tokens": 55429,
+    "completion_tokens": 7428,
+    "total_tokens": 62857,
+    "summed_latency_seconds": 128.08049291199677
+  },
+  "usage_by_stage": {
+    "llm1": {
+      "calls_recorded": 20,
+      "costed_calls": 20,
+      "unknown_cost_calls": 0,
+      "estimated_cost_usd": 0.00366405,
+      "unknown_cost_reservations_usd": 0,
+      "prompt_tokens": 10779,
+      "completion_tokens": 3412,
+      "total_tokens": 14191,
+      "summed_latency_seconds": 45.87225174399828
+    },
+    "second_assessor": {
+      "calls_recorded": 20,
+      "costed_calls": 20,
+      "unknown_cost_calls": 0,
+      "estimated_cost_usd": 0.0091071,
+      "unknown_cost_reservations_usd": 0,
+      "prompt_tokens": 44650,
+      "completion_tokens": 4016,
+      "total_tokens": 48666,
+      "summed_latency_seconds": 82.2082411679985
+    }
+  },
+  "latency_per_completed_requirement_seconds": 6.404024645599838,
+  "cost_projection": {
+    "basis_complete_items": 20,
+    "per_requirement_usd": 0.0006385575,
+    "per_1000_requirements_usd": 0.6385575,
+    "at_100x_1000_requirements_usd": 63.85575000000001,
+    "assumptions": "Two calls per requirement; fixed observed workload/prices, no retries, no bias runs; not a scaling benchmark."
+  }
+}

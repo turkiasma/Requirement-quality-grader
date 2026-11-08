@@ -1,0 +1,39 @@
+{
+  "implementation_commit": "40a0cf1",
+  "measured_source_hash_verified_against_commit": true,
+  "run_artifacts": [
+    "pipeline_v5_20261108T142719572897Z_1f338e0aa9da.jsonl",
+    "pipeline_v5_20261108T142826839338Z_61be63458235.jsonl",
+    "position_bias_v1_20261108T143114074158Z_1ab5e29e294f.jsonl",
+    "verbosity_bias_v1_20261108T143115016927Z_16c621ec639b.jsonl"
+  ],
+  "calls": 72,
+  "actual_tokens": 138138,
+  "estimated_cost_usd": 0.0261243,
+  "unknown_cost_calls": 0,
+  "authorized_budget_usd": 2,
+  "offline_tests_passed": 81,
+  "checks": [
+    "unittest",
+    "dataset schema and uniqueness",
+    "compileall",
+    "pip check",
+    "CLI help",
+    "secret scan",
+    "reference review round trip"
+  ],
+  "dataset": {
+    "dev": 20,
+    "test": 130,
+    "verified": 0,
+    "proposed": 150
+  },
+  "held_out_model_calls": 0,
+  "human_reference_reliability": "pending manual verification",
+  "notes": [
+    "The smoke preceded final instrumentation refinements.",
+    "The measured dev implementation exactly matches commit 40a0cf1.",
+    "A later CSV LF formatting fix does not change model evaluation.",
+    "No candidate pair exceeds 0.85 SequenceMatcher text similarity; this is not a semantic independence guarantee."
+  ]
+}

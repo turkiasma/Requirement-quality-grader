@@ -1,0 +1,298 @@
+{
+  "interpretation": "Length sensitivity of requirement grades; repetition may itself affect model behaviour. Small pilot, not causal proof.",
+  "cases": 6,
+  "valid_complete_cases": 6,
+  "failed_cases": 0,
+  "padding_effect": {
+    "valid_pairs": 6,
+    "failed_pairs": 0,
+    "criterion_scores": {
+      "increased": {
+        "count": 0,
+        "denominator": 30,
+        "percent": 0.0
+      },
+      "decreased": {
+        "count": 0,
+        "denominator": 30,
+        "percent": 0.0
+      },
+      "unchanged": {
+        "count": 30,
+        "denominator": 30,
+        "percent": 100.0
+      },
+      "mean_signed_change": 0.0,
+      "mean_absolute_change": 0.0
+    },
+    "overall_scores": {
+      "increased": {
+        "count": 0,
+        "denominator": 6,
+        "percent": 0.0
+      },
+      "decreased": {
+        "count": 0,
+        "denominator": 6,
+        "percent": 0.0
+      },
+      "unchanged": {
+        "count": 6,
+        "denominator": 6,
+        "percent": 100.0
+      },
+      "mean_signed_change": 0.0,
+      "mean_absolute_change": 0.0
+    },
+    "per_criterion": {
+      "atomicity": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      },
+      "testability": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      },
+      "feasibility": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      },
+      "clarity": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      },
+      "completeness": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      }
+    },
+    "affected_case_ids": []
+  },
+  "repeat_control": {
+    "valid_pairs": 6,
+    "failed_pairs": 0,
+    "criterion_scores": {
+      "increased": {
+        "count": 0,
+        "denominator": 30,
+        "percent": 0.0
+      },
+      "decreased": {
+        "count": 0,
+        "denominator": 30,
+        "percent": 0.0
+      },
+      "unchanged": {
+        "count": 30,
+        "denominator": 30,
+        "percent": 100.0
+      },
+      "mean_signed_change": 0.0,
+      "mean_absolute_change": 0.0
+    },
+    "overall_scores": {
+      "increased": {
+        "count": 0,
+        "denominator": 6,
+        "percent": 0.0
+      },
+      "decreased": {
+        "count": 0,
+        "denominator": 6,
+        "percent": 0.0
+      },
+      "unchanged": {
+        "count": 6,
+        "denominator": 6,
+        "percent": 100.0
+      },
+      "mean_signed_change": 0.0,
+      "mean_absolute_change": 0.0
+    },
+    "per_criterion": {
+      "atomicity": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      },
+      "testability": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      },
+      "feasibility": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      },
+      "clarity": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      },
+      "completeness": {
+        "increased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "decreased": {
+          "count": 0,
+          "denominator": 6,
+          "percent": 0.0
+        },
+        "unchanged": {
+          "count": 6,
+          "denominator": 6,
+          "percent": 100.0
+        },
+        "mean_signed_change": 0.0,
+        "mean_absolute_change": 0.0
+      }
+    },
+    "affected_case_ids": []
+  },
+  "usage": {
+    "calls_recorded": 18,
+    "costed_calls": 18,
+    "unknown_cost_calls": 0,
+    "estimated_cost_usd": 0.0083661,
+    "unknown_cost_reservations_usd": 0,
+    "prompt_tokens": 41502,
+    "completion_tokens": 3568,
+    "total_tokens": 45070,
+    "summed_latency_seconds": 75.57088749200011
+  },
+  "source_sha256": "ab391429a31790ed8351cce5648239c944ebe2d8cc0318f53915c187cb0f825c"
+}

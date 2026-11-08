@@ -1,0 +1,25 @@
+{
+  "authorized_budget_usd": 2,
+  "pricing_checked_at": "2026-11-08",
+  "pricing_source": "https://openrouter.ai/openai/gpt-4o-mini/providers",
+  "model": "openai/gpt-4o-mini",
+  "smoke": {
+    "items": 1,
+    "calls": 2,
+    "estimated_cost_usd": 0.00063465
+  },
+  "planned_development": {
+    "items": 20,
+    "calls": 40,
+    "smoke_based_estimate_usd": 0.012693
+  },
+  "planned_bias": {
+    "position_cases": 6,
+    "position_calls": 12,
+    "verbosity_cases": 6,
+    "verbosity_calls_including_controls": 18,
+    "selection": "REQ-001,005,010,015,017,020 from saved dev run; no new LLM1 calls"
+  },
+  "planning_allowance_usd": 0.1,
+  "note": "Allowance is not measured spend. Each call reserves a conservative token-cost bound in a persistent ignored local ledger. Held-out test model execution remains blocked until manual reference verification."
+}
