@@ -82,7 +82,14 @@ python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt
 ```
 
 Create `.env` locally if absent and set `OPENROUTER_API_KEY` there. Never commit
-it or paste its contents into results. `.env.example` shows the variable names.
+it or paste its contents into results. Set these variables in your local file:
+
+```dotenv
+OPENROUTER_API_KEY=your_local_key
+REVIEWER_MODEL=openai/gpt-4o-mini
+ASSESSOR_MODEL=openai/gpt-4o-mini
+```
+
 The default model is `openai/gpt-4o-mini` through OpenRouter, configurable through
 `REVIEWER_MODEL`, `ASSESSOR_MODEL` or CLI flags. No Ollama service is required.
 
@@ -314,7 +321,4 @@ or team responsibility is captured by commits:
   handling and v3 prompt refinements; directed the current completion work.
 - **Emna Smaali**: v4 0–5 assessment architecture and OpenRouter integration.
 - **Youssef Sassi (`SASSIX`)**: dataset scoring iterations and pipeline integration.
-
-The PDF report is distributed separately. Saved experiment files and
-`results/README.md` provide its evidence; `postmortem.md` records observed
-implementation problems.
+- **Nour Guidara**: initial project setup.
