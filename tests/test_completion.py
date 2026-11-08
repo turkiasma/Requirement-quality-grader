@@ -78,6 +78,7 @@ class Files(unittest.TestCase):
     def test_review_export_import_preserves_proposal_until_explicit_review(self):
         review=self.root/'review.csv'; output=self.root/'reviewed.jsonl'
         export_review(self.data,review)
+        self.assertNotIn(b'\r\n', review.read_bytes())
         self.assertEqual(import_review(self.data,review,output),0)
         self.assertEqual(load_dataset(output)[0]['annotation_status'],'proposed')
         with review.open(newline='') as stream:

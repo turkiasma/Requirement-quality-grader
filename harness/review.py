@@ -14,7 +14,7 @@ FIELDS = ['id', 'requirement', 'split', 'source_sha256', 'annotation_status', 'r
 def export_review(dataset, output):
     items = load_dataset(dataset, 'all')
     with Path(output).open('x', newline='', encoding='utf-8') as stream:
-        writer = csv.DictWriter(stream, fieldnames=FIELDS)
+        writer = csv.DictWriter(stream, fieldnames=FIELDS, lineterminator="\n")
         writer.writeheader()
         for item in items:
             row = {k: item[k] for k in ('id', 'requirement', 'split', 'annotation_status')}
