@@ -30,3 +30,12 @@ frequencies are in `results/dataset_validation_v2.json`; all anchors occur, but
 most atomicity and feasibility grades are 5. Feasibility grades 3–4 and other
 borderline examples particularly need human judgment. Some defect examples
 intentionally contain impossible guarantees or contradictions.
+
+## Additional annotation review — 8 November 2026
+
+`annotation_review_ai.jsonl` records a second AI rubric review of all 150 rows.
+It flags 13 items for reconsideration and provides suggested grades where a
+specific revision is supported. These suggestions are separate from the
+canonical labels and the original `reference_review.csv`; they have not changed
+the reference snapshot used for saved experiments. The file is not a record of
+human annotation. Inspect its notes when completing the existing review workflow.

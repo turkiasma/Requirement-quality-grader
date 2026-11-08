@@ -5,21 +5,48 @@ testability, feasibility, clarity and completeness**. It measures whether a
 second LLM assessment improves agreement with a reference set; improvement is
 an empirical question, not an assumption.
 
-**Current reference status: 150 AI-prepared proposals, 0 human-verified.**
-There are 20 development requirements and 130 held-out test requirements.
-Development comparisons are provisional. Final human-reference reliability and
-held-out model evaluation remain pending manual review.
+The dataset contains **150 software requirements**: 20 development examples and
+130 held-out test examples. The recorded experiments cover the 20 development
+examples and six selected cases for each bias diagnostic.
 
 ## Architecture
 
-```text
-Requirement → LLM1: five grades + explanations
-                       ↓
-Requirement + LLM1 assessment + detailed guide → Judge: five final grades + explanations
-                       ↓
-Python: averages, retained flags, reference comparisons, corrections and metrics
-                       ↓
-Unique per-item JSONL + aggregate JSON in results/
+```mermaid
+flowchart LR
+    R["Software requirement"]
+    P["Short definitions<br/>Reviewer prompt v5"]
+    G["Detailed labelling guide<br/>Rubric v2"]
+    REF[("Reference annotations<br/>Five criterion grades")]
+
+    subgraph ASSESS["MODEL ASSESSMENT · OpenRouter"]
+        L1["LLM1 · Initial assessor<br/>Five grades + explanations"]
+        L2["LLM2 · Judge<br/>Verify or correct each grade"]
+        L1 -->|Structured assessment| L2
+    end
+
+    subgraph EVAL["DETERMINISTIC EVALUATION · Python"]
+        S["Scoring and comparison<br/>Means · MAE · Agreement · Corrections"]
+        O[("Results<br/>Per-item JSONL + aggregate JSON")]
+        S --> O
+    end
+
+    R --> L1
+    R --> L2
+    P --> L1
+    G --> L2
+    L1 -->|Initial grades| S
+    L2 -->|Final grades + explanations| S
+    REF -.->|Python only · never sent to models| S
+    O --> B["Bias diagnostics<br/>Position swap · Verbosity · Repeat control"]
+
+    classDef input fill:#f1f5f9,stroke:#64748b,color:#0f172a;
+    classDef model fill:#eff6ff,stroke:#2563eb,color:#1e3a8a;
+    classDef compute fill:#ecfdf5,stroke:#059669,color:#064e3b;
+    classDef output fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95;
+    class R,P,G,REF input;
+    class L1,L2 model;
+    class S compute;
+    class O,B output;
 ```
 
 LLM1 receives only the original requirement, a short system prompt and concise
@@ -97,7 +124,7 @@ use timestamp-and-random-suffix names and exclusive creation; they are not overw
 API responses are requested with a strict JSON schema and locally validated by
 Pydantic. Failures are errors, never fabricated zero grades.
 
-## Dataset and manual review
+## Dataset and annotation workflow
 
 `data/golden_set.jsonl` contains 150 unique requirements across software domains,
 including authentication, APIs, payments, healthcare, privacy, accessibility,
@@ -109,6 +136,10 @@ The original 20 texts remain dev. All 130 new texts are test; none were copied
 into active prompts or guide examples. The references are **AI-prepared proposed
 annotations**, not the old binary-to-score conversion. Historical datasets and
 the previous guide live under `data/history/` and are rejected by the active loader.
+
+A second rubric review is recorded in `data/annotation_review_ai.jsonl`, with
+13 items flagged for reconsideration. Its suggestions do not alter the reference
+snapshot used for the reported experiments.
 
 A ready-to-edit CSV is provided at `data/reference_review.csv`. To export a fresh
 copy (output must not already exist):
@@ -206,17 +237,73 @@ are linear workload estimates, not scaling measurements. Bias calls are separate
 Temperature 0 is not guaranteed deterministic; hashes identify actual inputs,
 but provider changes and mutable model aliases can still affect reproducibility.
 
-## Results and limitations
+## Experimental results
 
-See [results/README.md](results/README.md) for measured development and bias pilot
-results, artifact paths and known limitations. Historical v2–v4 runs remain in
-`results/`; they are not directly comparable with the changed v5 rubric and inputs.
-No held-out score or human-reference reliability claim is available until review.
+The v5 development run completed **20/20 requirements without failures** using
+`openai/gpt-4o-mini` at temperature 0. The comparisons below use the recorded
+AI-prepared reference annotations; they measure reference agreement rather than
+independent human agreement. Exact artifacts are indexed in [results/README.md](results/README.md).
 
-Important limitations include AI-drafted references, subjective intermediate
-anchors, class imbalance, same-model anchoring, and the sensitivity of a
-pairwise/verbosity diagnostic to its chosen cases. Exact-text duplicate checks
-do not prove semantic independence between all requirements.
+| Metric | LLM1 | Judge |
+|---|---:|---:|
+| Criterion exact agreement | 48/100 (48%) | 50/100 (50%) |
+| Criterion within-one agreement | 77/100 (77%) | 74/100 (74%) |
+| Average criterion MAE | 0.83 | 0.85 |
+| Overall-score MAE | 0.57 | 0.65 |
+| Overall mean signed error | +0.19 | +0.07 |
+| Exact overall agreement | 5/20 (25%) | 4/20 (20%) |
+| Overall agreement within 0.2 | 7/20 (35%) | 6/20 (30%) |
+| All five grades match | 4/20 (20%) | 4/20 (20%) |
+
+| Criterion | LLM1 exact | Judge exact | LLM1 MAE | Judge MAE |
+|---|---:|---:|---:|---:|
+| Atomicity | 11/20 | 11/20 | 0.65 | 0.65 |
+| Testability | 7/20 | 8/20 | 1.20 | 1.20 |
+| Feasibility | 15/20 | 17/20 | 0.25 | 0.20 |
+| Clarity | 7/20 | 7/20 | 1.15 | 1.15 |
+| Completeness | 8/20 | 7/20 | 0.90 | 1.05 |
+
+The judge retained 88/100 grades and changed 12/100. Of the changes, 5/12
+(41.67%) moved closer to the proposals and 7/12 (58.33%) moved farther away.
+Overall error improved on 1/20 requirements, worsened on 6/20 and was unchanged
+on 13/20. The second stage did **not** improve overall MAE in this run.
+
+### Bias diagnostics
+
+| Experiment | Measured outcome | Sample |
+|---|---|---|
+| Position: candidate identity or tie changed | 0/6 (0%) | Six swapped candidate pairs |
+| Position: strict preference reversal | 0/3 (0%) | Three pairs non-tied in both orders |
+| First-position preference | 3/6 (50%) | Six non-tied judge calls |
+| Verbosity: criterion grade changed | 0/30 (0%) | Five grades across six cases |
+| Repeated-input control: grade changed | 0/30 (0%) | Same six cases |
+
+### Runtime and cost
+
+| Run | Calls | Tokens | Estimated cost (USD) |
+|---|---:|---:|---:|
+| Smoke | 2 | 3,136 | 0.00063465 |
+| Development | 40 | 62,857 | 0.01277115 |
+| Position diagnostic | 12 | 27,075 | 0.00435240 |
+| Verbosity and controls | 18 | 45,070 | 0.00836610 |
+| **Total** | **72** | **138,138** | **0.02612430** |
+
+The dev pipeline averaged **6.40 seconds per requirement**. At the observed
+workload and recorded token prices, 1,000 requirements would cost approximately
+**$0.63856**, and 100,000 approximately **$63.85575**. These are linear projections,
+not measured large-scale runs. Historical v2–v4 results use incompatible setups
+and are not a controlled baseline for claiming a v5 prompt improvement.
+
+## Limitations
+
+| Limitation | Effect on interpretation |
+|---|---|
+| Dataset size and evaluation coverage | The corpus has 150 requirements; the recorded model evaluation covers 20 dev items, not the 130 held-out examples. |
+| Subjective requirement assessment | Intermediate grades depend on engineering judgment and the interpretation of scope and severity. |
+| Uneven grade distribution | Atomicity and feasibility are dominated by high scores; performance may differ on other distributions. |
+| Same-model second assessment | The judge sees LLM1's answer and can inherit its assumptions; a second pass need not improve agreement. |
+| Small bias samples | Six cases cannot establish that the model is generally free of position or verbosity sensitivity. |
+| Provider variability | Temperature 0 and saved configuration hashes do not guarantee identical responses across provider updates. |
 
 ## Contributions
 
@@ -227,9 +314,7 @@ or team responsibility is captured by commits:
   handling and v3 prompt refinements; directed the current completion work.
 - **Emna Smaali**: v4 0–5 assessment architecture and OpenRouter integration.
 - **Youssef Sassi (`SASSIX`)**: dataset scoring iterations and pipeline integration.
-- **Codex assistance**: v5 implementation, provisional dataset expansion, review
-  tooling, tests and evaluation execution. Human annotation verification remains pending.
 
-The university report is prepared and submitted separately, outside this
-repository. `docs/REPORT_PREPARATION.md` indexes supporting evidence; it is not
-that report. `postmortem.md` records observed implementation problems.
+The PDF report is distributed separately. Saved experiment files and
+`results/README.md` provide its evidence; `postmortem.md` records observed
+implementation problems.
