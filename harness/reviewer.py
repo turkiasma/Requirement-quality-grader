@@ -17,21 +17,16 @@ from harness.schemas import LLM1Output
 DEFAULT_MODEL = os.environ.get('REVIEWER_MODEL', 'openai/gpt-4o-mini')
 
 ROOT = Path(__file__).resolve().parent.parent
-PROMPT_PATH = ROOT / 'prompts' / 'critique_prompt_v4.txt'
+PROMPT_PATH = ROOT / 'prompts' / 'critique_prompt_v5.txt'
 GUIDE_PATH = ROOT / 'data' / 'labelling_guide.md'
 
 
-def load_prompt() -> str:
-    """Load the grading instructions plus the full criterion guide."""
-    if not PROMPT_PATH.exists():
-        raise FileNotFoundError(f'Prompt file not found: {PROMPT_PATH}')
-    if not GUIDE_PATH.exists():
-        raise FileNotFoundError(f'Guide file not found: {GUIDE_PATH}')
-    guide = GUIDE_PATH.read_text(encoding='utf-8')
-    return PROMPT_PATH.read_text(encoding='utf-8') + '\n\nCriterion guide:\n' + guide
+def load_prompt(prompt_path=None) -> str:
+    """LLM1 deliberately receives no detailed labelling guide."""
+    return Path(prompt_path or PROMPT_PATH).read_text(encoding='utf-8')
 
 
-def grade_requirement(requirement: str, model: str = DEFAULT_MODEL):
+def grade_requirement(requirement: str, model: str = DEFAULT_MODEL, prompt_path=None):
     """Grade one software requirement on the five criteria via the OpenRouter API.
 
     Args:
@@ -46,7 +41,7 @@ def grade_requirement(requirement: str, model: str = DEFAULT_MODEL):
 
     return call_structured(
         model=model,
-        system=load_prompt(),
+        system=load_prompt(prompt_path),
         user=requirement.strip(),
         schema_model=LLM1Output,
         max_tokens=1024,

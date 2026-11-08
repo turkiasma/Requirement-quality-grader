@@ -16,11 +16,15 @@ from harness.schemas import CRITERIA, GOLD_SCHEME, LLM1Output, SecondAssessorOut
 
 
 def item(identifier='REQ-001', split='dev', with_gold=False):
-    row = {'id': identifier, 'split': split, 'requirement': 'The API shall return HTTP 401.'}
-    if with_gold:
-        row['scheme'] = GOLD_SCHEME
-        row['criteria'] = {key: 5 for key in CRITERIA}
-    return row
+    from harness.schemas import GUIDE_VERSION
+    return {'id': identifier, 'split': split,
+            'requirement': 'The API shall return HTTP 401.' + ('' if identifier == 'REQ-001' else ' Case ' + identifier),
+            'scheme': GOLD_SCHEME, 'guide_version': GUIDE_VERSION,
+            'criteria': {key: 5 for key in CRITERIA},
+            'justifications': {key: 'Fixture reason.' for key in CRITERIA},
+            'gold_score': 5.0, 'annotation_status': 'verified' if with_gold else 'proposed',
+            'provenance': {'prepared_by': 'unittest synthetic fixture', 'prepared_at': '2026-11-08',
+                           'reviewed_by': 'fixture only', 'reviewed_at': '2026-11-08'}}
 
 
 def llm1_output(grade=5):
@@ -30,7 +34,7 @@ def llm1_output(grade=5):
 
 def second_output(grade=5):
     return SecondAssessorOutput.model_validate(
-        {'criteria': {key: {'grade': grade, 'retained': True, 'reason': 'Reason.'} for key in CRITERIA}})
+        {'criteria': {key: {'grade': grade, 'retained': True, 'explanation': 'Reason.'} for key in CRITERIA}})
 
 
 class PipelineTests(unittest.TestCase):
@@ -56,19 +60,19 @@ class PipelineTests(unittest.TestCase):
 
     @patch('harness.runner.assess_requirement')
     @patch('harness.runner.grade_requirement')
-    def test_complete_pipeline_gold_pending(self, grade_requirement, assess_requirement):
+    def test_complete_pipeline_proposed_reference(self, grade_requirement, assess_requirement):
         grade_requirement.return_value = (self.llm1, {'model': 'x', 'latency_seconds': 0.1})
         assess_requirement.return_value = (self.second, {'model': 'x', 'latency_seconds': 0.1})
         path, rows, console = self.execute()
-        self.assertTrue(path.name.startswith('pipeline_v4_'))
+        self.assertTrue(path.name.startswith('pipeline_v5_'))
         row = rows[0]
-        self.assertIsNone(row['gold_criteria'])
-        self.assertIsNone(row['gold_score'])
-        self.assertIsNone(row['comparison'])
+        self.assertEqual(row['gold_criteria'], {key: 5 for key in CRITERIA})
+        self.assertEqual(row['gold_score'], 5.0)
+        self.assertEqual(row['annotation_status'], 'proposed')
         self.assertEqual(row['llm1_output'], self.llm1.model_dump())
         self.assertEqual(row['second_assessor_output'], self.second.model_dump())
         self.assertEqual(row['status'], 'ok')
-        self.assertIn('Gold criteria: pending', console)
+        self.assertIn('Reference: proposed', console)
 
     @patch('harness.runner.assess_requirement')
     @patch('harness.runner.grade_requirement')
@@ -79,8 +83,8 @@ class PipelineTests(unittest.TestCase):
         _, rows, _ = self.execute()
         row = rows[0]
         self.assertEqual(row['gold_score'], 5.0)
-        self.assertTrue(row['comparison']['llm1_vs_human']['all_five_match'])
-        self.assertTrue(row['comparison']['second_vs_human']['all_five_match'])
+        self.assertTrue(row['comparison']['llm1_vs_reference']['all_five_match'])
+        self.assertTrue(row['comparison']['judge_vs_reference']['all_five_match'])
         self.assertEqual(row['comparison']['correction_direction']['tally'],
                           {'closer': 0, 'farther': 0, 'equal': 5})
 
@@ -93,7 +97,8 @@ class PipelineTests(unittest.TestCase):
         self.execute()
         args, kwargs = assess_requirement.call_args
         self.assertEqual(args, ('The API shall return HTTP 401.', self.llm1))
-        self.assertEqual(kwargs, {})
+        self.assertNotIn('gold_criteria', kwargs)
+        self.assertEqual(kwargs['model'], 'openai/gpt-4o-mini')
 
     @patch('harness.runner.assess_requirement')
     @patch('harness.runner.grade_requirement')
@@ -129,7 +134,9 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(console.count('Waiting for LLM1'), 2)
 
     def test_rejects_unversioned_criteria_old_binary_scheme(self):
-        self.write_items([dict(item(), criteria={key: 0 for key in CRITERIA})])
+        row = dict(item(), criteria={key: 0 for key in CRITERIA})
+        del row['scheme']
+        self.write_items([row])
         with self.assertRaisesRegex(ValueError, 'scheme and criteria'):
             run(self.dataset, self.results)
 
@@ -159,8 +166,8 @@ class PipelineTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'no development items'):
                 run(self.dataset, self.results)
 
-    def test_existing_pending_dataset_loads(self):
-        items = load_dataset(Path('data') / 'golden_set_pending.jsonl')
+    def test_existing_proposed_dataset_loads(self):
+        items = load_dataset(Path('data') / 'golden_set.jsonl')
         self.assertEqual(len(items), 20)
         self.assertTrue(all(row['split'] == 'dev' for row in items))
 

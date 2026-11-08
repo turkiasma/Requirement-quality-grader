@@ -1,0 +1,9 @@
+{
+  "checked_at": "2026-11-08",
+  "source": "https://openrouter.ai/openai/gpt-4o-mini/providers",
+  "currency": "USD",
+  "notes": "Public list prices; ignores cache discounts. Provider max_price is sent with requests. Refresh before future runs; non-token fees and credits are not modelled.",
+  "models": {
+    "openai/gpt-4o-mini": {"input_per_million_usd": 0.15, "output_per_million_usd": 0.60}
+  }
+}

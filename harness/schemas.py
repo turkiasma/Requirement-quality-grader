@@ -8,7 +8,8 @@ CRITERIA = ('atomicity', 'testability', 'feasibility', 'clarity', 'completeness'
 
 # Marks the 0-5 grade-anchor scoring convention so a dataset row can never be
 # silently misread under the old binary (0/1 violation) convention.
-GOLD_SCHEME = 'grade_0_5_v1'
+GOLD_SCHEME = 'grade_0_5_v2'
+GUIDE_VERSION = 'requirement_quality_v2'
 
 
 def _nonblank(value):
@@ -52,10 +53,10 @@ class SecondAssessorGrade(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     grade: int = Field(strict=True, ge=0, le=5)
-    retained: bool
-    reason: str
+    retained: bool = Field(strict=True)
+    explanation: str
 
-    @field_validator('reason')
+    @field_validator('explanation')
     @classmethod
     def nonblank_reason(cls, value):
         return _nonblank(value)

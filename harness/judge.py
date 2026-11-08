@@ -18,20 +18,20 @@ from harness.schemas import LLM1Output, SecondAssessorOutput
 DEFAULT_MODEL = os.environ.get('ASSESSOR_MODEL', 'openai/gpt-4o-mini')
 
 ROOT = Path(__file__).resolve().parent.parent
-PROMPT_PATH = ROOT / 'prompts' / 'judge_prompt_v4.txt'
+PROMPT_PATH = ROOT / 'prompts' / 'judge_prompt_v5.txt'
 GUIDE_PATH = ROOT / 'data' / 'labelling_guide.md'
 
 
-def load_prompt() -> str:
+def load_prompt(prompt_path=None) -> str:
     if not PROMPT_PATH.exists():
         raise FileNotFoundError(f'Prompt file not found: {PROMPT_PATH}')
     if not GUIDE_PATH.exists():
         raise FileNotFoundError(f'Guide file not found: {GUIDE_PATH}')
     guide = GUIDE_PATH.read_text(encoding='utf-8')
-    return PROMPT_PATH.read_text(encoding='utf-8') + '\n\nCriterion guide:\n' + guide
+    return Path(prompt_path or PROMPT_PATH).read_text(encoding='utf-8') + '\n\nCriterion guide:\n' + guide
 
 
-def assess_requirement(requirement: str, llm1_output, model: str = DEFAULT_MODEL):
+def assess_requirement(requirement: str, llm1_output, model: str = DEFAULT_MODEL, prompt_path=None):
     """Independently assess the requirement, auditing LLM1's proposal.
 
     Args:
@@ -58,10 +58,14 @@ def assess_requirement(requirement: str, llm1_output, model: str = DEFAULT_MODEL
         'llm1_proposal': llm1_proposal,
     }, ensure_ascii=False)
 
-    return call_structured(
+    output, metadata = call_structured(
         model=model,
-        system=load_prompt(),
+        system=load_prompt(prompt_path),
         user=user_message,
         schema_model=SecondAssessorOutput,
         max_tokens=1024,
     )
+
+    for key, verdict in output.criteria.items():
+        verdict.retained = verdict.grade == llm1_proposal['criteria'][key]['grade']
+    return output, metadata

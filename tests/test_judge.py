@@ -12,7 +12,7 @@ def llm1_payload(grade=5):
 
 
 def second_payload(grade=5, retained=True):
-    return {'criteria': {key: {'grade': grade, 'retained': retained, 'reason': 'A specific reason.'}
+    return {'criteria': {key: {'grade': grade, 'retained': retained, 'explanation': 'A specific reason.'}
                          for key in CRITERIA}}
 
 

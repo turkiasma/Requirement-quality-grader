@@ -12,7 +12,7 @@ def llm1_payload(**overrides):
 
 
 def second_payload(**overrides):
-    criteria = {key: {'grade': 5, 'retained': True, 'reason': 'Reason.'} for key in CRITERIA}
+    criteria = {key: {'grade': 5, 'retained': True, 'explanation': 'Reason.'} for key in CRITERIA}
     criteria.update(overrides)
     return {'criteria': criteria}
 
@@ -69,17 +69,17 @@ class SecondAssessorOutputTests(unittest.TestCase):
             SecondAssessorOutput.model_validate(payload)
 
     def test_rejects_out_of_range_grade(self):
-        payload = second_payload(clarity={'grade': 7, 'retained': True, 'reason': 'x'})
+        payload = second_payload(clarity={'grade': 7, 'retained': True, 'explanation': 'x'})
         with self.assertRaises(ValidationError):
             SecondAssessorOutput.model_validate(payload)
 
     def test_rejects_blank_reason(self):
-        payload = second_payload(clarity={'grade': 5, 'retained': True, 'reason': ''})
+        payload = second_payload(clarity={'grade': 5, 'retained': True, 'explanation': ''})
         with self.assertRaises(ValidationError):
             SecondAssessorOutput.model_validate(payload)
 
     def test_requires_retained_flag(self):
-        payload = second_payload(clarity={'grade': 5, 'reason': 'x'})
+        payload = second_payload(clarity={'grade': 5, 'explanation': 'x'})
         with self.assertRaises(ValidationError):
             SecondAssessorOutput.model_validate(payload)
 

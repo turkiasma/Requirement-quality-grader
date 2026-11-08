@@ -1,173 +1,132 @@
-"""Run LLM1 then the second assessor on the dev set, scoring both against
-human references when available (gold-pending items still run LLM1 and the
-second assessor; only the human-comparison fields are skipped), and saving
-one row per item.
-"""
-
+"""Grade selected requirements, preserve partial failures, and summarize reference agreement."""
 import argparse
-from datetime import datetime, timezone
 import json
 from pathlib import Path
-from uuid import uuid4
-
-from harness.reviewer import grade_requirement
-from harness.judge import assess_requirement
+from harness.artifacts import ROOT, digest, timestamp, new_path, provenance, write_json
+from harness.dataset import DATA_PATH, load_dataset
+from harness.reviewer import grade_requirement, DEFAULT_MODEL as REVIEWER_MODEL, PROMPT_PATH as REVIEWER_PROMPT
+from harness.judge import assess_requirement, DEFAULT_MODEL as JUDGE_MODEL, PROMPT_PATH as JUDGE_PROMPT
+from harness.schemas import GUIDE_VERSION, GOLD_SCHEME
 from harness.scorer import compare_to_human, correction_direction, overall_score
-from harness.schemas import GOLD_SCHEME, validate_gold_criteria
+from harness.metrics import summarize
 
-
-ROOT = Path(__file__).resolve().parent.parent
-DATA_PATH = ROOT / 'data' / 'golden_set.jsonl'
 RESULTS_DIR = ROOT / 'results'
-
-
-def load_dataset(data_path=None):
-    """Validate the whole dataset before any model call; select only dev rows.
-
-    A row carries usable gold grades only if it has BOTH `scheme` ==
-    GOLD_SCHEME and a `criteria` dict of five 0-5 integers -- a mismatched or
-    missing scheme is rejected, never silently reinterpreted. A row with
-    neither field is gold-pending: LLM1 and the second assessor still run,
-    human-comparison is just skipped for it.
-    """
-    items, seen = [], set()
-    with Path(data_path or DATA_PATH).open(encoding='utf-8') as file:
-        for line_number, line in enumerate(file, 1):
-            if not line.strip():
-                continue
-            try:
-                item = json.loads(line)
-                if not isinstance(item, dict) or not {'id', 'requirement', 'split'} <= set(item):
-                    raise ValueError('Expected at least id, requirement, and split fields.')
-                for key in ('id', 'requirement'):
-                    if not isinstance(item[key], str) or not item[key].strip():
-                        raise ValueError(f'{key} must be a nonblank string.')
-                if item['id'] in seen:
-                    raise ValueError(f"Duplicate ID: {item['id']}")
-                if item['split'] not in ('dev', 'test'):
-                    raise ValueError('split must be dev or test.')
-
-                has_scheme = 'scheme' in item
-                has_criteria = 'criteria' in item
-                if has_scheme != has_criteria:
-                    raise ValueError('scheme and criteria must both be present or both absent.')
-                if has_scheme:
-                    if item['scheme'] != GOLD_SCHEME:
-                        raise ValueError(
-                            f"Unsupported or mismatched scheme {item['scheme']!r}; "
-                            f'expected {GOLD_SCHEME!r}. Refusing to reinterpret it.'
-                        )
-                    validate_gold_criteria(item['criteria'])
-                    extra = set(item) - {'id', 'requirement', 'split', 'scheme', 'criteria', 'gold_score'}
-                else:
-                    extra = set(item) - {'id', 'requirement', 'split'}
-                if extra:
-                    raise ValueError(f'Unexpected fields: {sorted(extra)}')
-            except (ValueError, TypeError) as error:
-                raise ValueError(f'Invalid dataset line {line_number}: {error}') from error
-            seen.add(item['id'])
-            if item['split'] == 'dev':
-                items.append(item)
-    if not items:
-        raise ValueError('Dataset contains no development items.')
-    return items
 
 
 def print_output(label, value):
     print(f'{label}: {json.dumps(value, ensure_ascii=False, indent=2)}', flush=True)
 
 
-def run(data_path=None, results_dir=None, limit=None):
-    """Save one row per dev item, including stage errors, in a new run file."""
-    dataset = load_dataset(data_path)
-    if limit is not None:
-        if type(limit) is not int or limit < 1:
-            raise ValueError('limit must be a positive integer.')
-        dataset = dataset[:limit]
-    directory = Path(results_dir or RESULTS_DIR)
-    directory.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
-    output_path = directory / f'pipeline_v4_{timestamp}_{uuid4().hex}.jsonl'
-    completed = failed = 0
-    interrupted = False
+def configuration(data_path, reviewer_model, judge_model, reviewer_prompt, judge_prompt):
+    return {'scheme': GOLD_SCHEME, 'guide_version': GUIDE_VERSION,
+            'dataset_sha256': digest(Path(data_path)), 'pricing_sha256': digest(ROOT / 'data/model_pricing.json'), 'reviewer_model': reviewer_model,
+            'judge_model': judge_model, 'temperature': 0, 'max_tokens': 1024,
+            **provenance(reviewer_prompt, judge_prompt)}
 
-    with output_path.open('x', encoding='utf-8') as output_file:
-        print(f'Results file: {output_path}', flush=True)
-        print(f'Development items selected: {len(dataset)}', flush=True)
+
+def run(data_path=None, results_dir=None, limit=None, split='dev', reviewer_model=REVIEWER_MODEL,
+        judge_model=JUDGE_MODEL, reviewer_prompt=None, judge_prompt=None, dry_run=False,
+        frozen_config=None, freeze=False):
+    data_path = Path(data_path or DATA_PATH)
+    dataset = load_dataset(data_path, split)
+    if limit is not None and (type(limit) is not int or limit < 1):
+        raise ValueError('limit must be a positive integer.')
+    # Require all test references reviewed, even when a limit is requested.
+    if not dry_run and any(i['split'] == 'test' and i['annotation_status'] != 'verified' for i in dataset):
+        raise ValueError('Held-out test execution is blocked until all selected test references are verified.')
+    reviewer_prompt, judge_prompt = Path(reviewer_prompt or REVIEWER_PROMPT), Path(judge_prompt or JUDGE_PROMPT)
+    config = configuration(data_path, reviewer_model, judge_model, reviewer_prompt, judge_prompt)
+    directory = Path(results_dir or RESULTS_DIR)
+    if frozen_config:
+        previous = json.loads(Path(frozen_config).read_text())
+        # Git commit/dirty status may change after committing a frozen configuration.
+        relevant = lambda c: {k: v for k, v in c.items() if k not in ('git_commit', 'worktree_dirty')}
+        if relevant(previous) != relevant(config):
+            raise ValueError('Frozen configuration differs from data, implementation, pricing, prompts or models.')
+    if not dry_run and any(i['split'] == 'test' for i in dataset) and not frozen_config:
+        raise ValueError('Test execution requires --frozen-config from an offline --freeze run.')
+    if limit:
+        dataset = dataset[:limit]
+    if dry_run:
+        print_output('Validated selection', {'items': len(dataset), 'split': split,
+                    'verified': sum(i['annotation_status'] == 'verified' for i in dataset), 'configuration': config})
+        if freeze:
+            path = new_path(directory, 'frozen_config', '.json'); write_json(path, config)
+            print('Frozen configuration:', path); return path
+        return None
+    if freeze:
+        raise ValueError('--freeze requires --dry-run.')
+    output_path = new_path(directory, 'pipeline_v5')
+    rows = []
+    interrupted = False
+    with output_path.open('x', encoding='utf-8') as stream:
+        print('Results file:', output_path, flush=True)
         for item in dataset:
-            gold_criteria = item.get('criteria')
-            result = {
-                'id': item['id'], 'split': item['split'],
-                'requirement': item['requirement'],
-                'gold_criteria': gold_criteria,
-                'gold_score': overall_score(gold_criteria) if gold_criteria else None,
-                'llm1_output': None, 'llm1_meta': None,
-                'second_assessor_output': None, 'second_assessor_meta': None,
-                'comparison': None,
-                'status': 'ok', 'error': None,
-            }
-            print(f"\nID: {item['id']} | Split: {item['split']}", flush=True)
-            print(f"Input requirement: {item['requirement']}", flush=True)
-            if gold_criteria:
-                print_output('Gold criteria', gold_criteria)
-            else:
-                print('Gold criteria: pending (not yet human-labelled under grade_0_5_v1)', flush=True)
+            result = {'result_version': 'pipeline_v5', 'run_id': output_path.stem,
+                'timestamp': timestamp(), 'id': item['id'], 'split': item['split'], 'requirement': item['requirement'],
+                'annotation_status': item['annotation_status'], 'reference': item,
+                'gold_criteria': item['criteria'], 'gold_score': item['gold_score'],
+                'configuration': config, 'llm1_output': None, 'llm1_meta': None, 'llm1_overall_score': None,
+                'second_assessor_output': None, 'second_assessor_meta': None, 'judge_overall_score': None,
+                'comparison': {'llm1_vs_reference': None, 'judge_vs_reference': None, 'correction_direction': None},
+                'grade_changes': None, 'status': 'ok', 'error': None}
+            print(f"\nID: {item['id']} | Split: {item['split']} | Reference: {item['annotation_status']}", flush=True)
+            print('Input requirement:', item['requirement'], flush=True)
             stage = 'llm1'
             try:
                 print('Waiting for LLM1...', flush=True)
-                llm1_output, llm1_meta = grade_requirement(item['requirement'])
-                result['llm1_output'] = llm1_output.model_dump()
-                result['llm1_meta'] = llm1_meta
+                a, meta = grade_requirement(item['requirement'], model=reviewer_model, prompt_path=reviewer_prompt)
+                result.update(llm1_output=a.model_dump(), llm1_meta=meta, llm1_overall_score=overall_score(a))
                 print_output('LLM1 output', result['llm1_output'])
-                print(f"LLM1 overall_score: {overall_score(llm1_output)}", flush=True)
-
+                print('LLM1 overall score:', result['llm1_overall_score'], flush=True)
                 stage = 'second_assessor'
-                print('Waiting for second assessor...', flush=True)
-                second_output, second_meta = assess_requirement(item['requirement'], llm1_output)
-                result['second_assessor_output'] = second_output.model_dump()
-                result['second_assessor_meta'] = second_meta
-                print_output('Second assessor output', result['second_assessor_output'])
-                print(f"Second assessor overall_score: {overall_score(second_output)}", flush=True)
-
-                if gold_criteria:
-                    stage = 'comparison'
-                    result['comparison'] = {
-                        'llm1_vs_human': compare_to_human(llm1_output, gold_criteria),
-                        'second_vs_human': compare_to_human(second_output, gold_criteria),
-                        'correction_direction': correction_direction(
-                            llm1_output, second_output, gold_criteria),
-                    }
-                    print_output('Comparison', result['comparison'])
+                print('Waiting for judge...', flush=True)
+                b, meta = assess_requirement(item['requirement'], a, model=judge_model, prompt_path=judge_prompt)
+                result.update(second_assessor_output=b.model_dump(), second_assessor_meta=meta, judge_overall_score=overall_score(b))
+                result['comparison']['judge_vs_reference'] = compare_to_human(b, item['criteria'])
+                result['comparison']['correction_direction'] = correction_direction(a, b, item['criteria'])
+                result['grade_changes'] = {k: b.criteria[k].grade - v.grade for k, v in a.criteria.items()}
+                print_output('Judge output', result['second_assessor_output'])
+                print('Judge overall score:', result['judge_overall_score'], flush=True)
             except (Exception, KeyboardInterrupt) as error:
                 interrupted = isinstance(error, KeyboardInterrupt)
                 result['status'] = 'error'
-                result['error'] = {
-                    'stage': stage,
-                    'message': 'Interrupted by user.' if interrupted else str(error),
-                }
-                print(f'Failed at {stage}: {result["error"]["message"]}', flush=True)
-                failed += 1
-            else:
-                completed += 1
-            output_file.write(json.dumps(result, ensure_ascii=False) + '\n')
-            output_file.flush()
-            print(f"Status: {result['status']}", flush=True)
-            print_output('Error', result['error'])
-            print(f"Saved {item['id']} to: {output_path}", flush=True)
+                result['error'] = {'stage': stage, 'message': 'Interrupted by user.' if interrupted else str(error)}
+                if hasattr(error, 'metadata'):
+                    result[stage + '_meta'] = error.metadata
+                print_output('Error', result['error'])
+            if result['llm1_output'] is not None:
+                result['comparison']['llm1_vs_reference'] = compare_to_human(result['llm1_output'], item['criteria'])
+            stream.write(json.dumps(result, ensure_ascii=False) + '\n'); stream.flush(); rows.append(result)
             if interrupted:
                 break
-
-    print(f'\nCompleted: {completed}; Failed: {failed}; Total: {completed + failed}', flush=True)
-    print(f'Results saved to: {output_path}', flush=True)
+    summary_path = output_path.with_suffix('.summary.json')
+    write_json(summary_path, summarize(rows))
+    failed = sum(r['status'] != 'ok' for r in rows)
+    print(f'Completed: {len(rows)-failed}; Failed: {failed}; Output: {output_path}', flush=True)
+    print('Summary:', summary_path, flush=True)
     if interrupted:
         raise KeyboardInterrupt
     return output_path
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--limit', type=int, help='Run only the first N dev items.')
-    args = parser.parse_args()
-    if args.limit is not None and args.limit < 1:
-        parser.error('--limit must be a positive integer')
-    run(limit=args.limit)
+    parser.add_argument('--data', default=str(DATA_PATH))
+    parser.add_argument('--split', choices=['dev', 'test', 'all'], default='dev')
+    parser.add_argument('--limit', type=int)
+    parser.add_argument('--output-dir', default=str(RESULTS_DIR))
+    parser.add_argument('--reviewer-model', default=REVIEWER_MODEL)
+    parser.add_argument('--judge-model', default=JUDGE_MODEL)
+    parser.add_argument('--reviewer-prompt', default=str(REVIEWER_PROMPT))
+    parser.add_argument('--judge-prompt', default=str(JUDGE_PROMPT))
+    parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--freeze', action='store_true')
+    parser.add_argument('--frozen-config')
+    args = vars(parser.parse_args())
+    args['data_path'] = args.pop('data'); args['results_dir'] = args.pop('output_dir')
+    run(**args)
+
+
+if __name__ == '__main__':
+    main()

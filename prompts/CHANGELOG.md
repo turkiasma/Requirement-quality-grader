@@ -96,3 +96,17 @@ the exact frozen v2 critiques, not newly generated v3 critiques.
   network timeout. Prompt text and the grading rubric are unchanged.
 - These inference-setting changes require new quality measurements; no score
   improvement is claimed.
+
+## v5 — 2026-11-08: requirement-quality correction contract
+
+- LLM1 receives short definitions only; removed the detailed guide from its input.
+- Judge receives the original requirement, complete initial assessment and guide
+  `requirement_quality_v2`. It grades the requirement, not the assessor's writing.
+- Output uses `explanation` consistently; Python derives numerical `retained`.
+- New pairwise position prompt v1 supports a separate diagnostic, not production judging.
+- References migrate to `grade_0_5_v2`, with explicit proposed/verified provenance.
+- Model configuration: OpenRouter `openai/gpt-4o-mini`, temperature 0, strict JSON schema.
+- Evaluation population: original 20 dev texts; reference grades are AI proposals.
+- Historical v4 metrics are not a comparable baseline: rubric, reference labels,
+  input guide access and judge output contract changed. No improvement is claimed.
+- Current v5 measurements and exact artifact names are recorded in `results/README.md`.

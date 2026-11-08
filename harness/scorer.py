@@ -1,4 +1,4 @@
-"""Deterministic aggregation and human-reference comparison. No model calls.
+"""Deterministic aggregation and reference comparison. No model calls.
 
 overall_score is always computed here from per-criterion grades -- never
 trusted as a number a model invented.
@@ -14,8 +14,11 @@ def _as_grade_dict(output):
     if isinstance(output, (LLM1Output, SecondAssessorOutput)):
         return {key: verdict.grade for key, verdict in output.criteria.items()}
     if isinstance(output, dict) and 'criteria' in output:
+        validate_gold_criteria({key: value['grade'] for key, value in output['criteria'].items()})
         return {key: output['criteria'][key]['grade'] for key in CRITERIA}
-    return dict(output)
+    grades = dict(output)
+    validate_gold_criteria(grades)
+    return grades
 
 
 def overall_score(criteria_grades):
@@ -25,7 +28,7 @@ def overall_score(criteria_grades):
 
 
 def compare_to_human(candidate, gold_criteria):
-    """Compare one candidate's per-criterion grades against the human reference."""
+    """Compare one candidate's per-criterion grades against the supplied reference (which may be provisional)."""
     validate_gold_criteria(gold_criteria)
     candidate_grades = _as_grade_dict(candidate)
     if set(candidate_grades) != set(CRITERIA):
@@ -38,7 +41,7 @@ def compare_to_human(candidate, gold_criteria):
         diff = candidate_grades[key] - gold_criteria[key]
         per_criterion[key] = {
             'candidate_grade': candidate_grades[key],
-            'human_grade': gold_criteria[key],
+            'reference_grade': gold_criteria[key],
             'diff': diff,
         }
         absolute_errors.append(abs(diff))
@@ -55,7 +58,7 @@ def compare_to_human(candidate, gold_criteria):
         'within_one_count': within_one,
         'mean_absolute_error': sum(absolute_errors) / len(CRITERIA),
         'overall_score': candidate_overall,
-        'human_overall_score': human_overall,
+        'reference_overall_score': human_overall,
         'overall_absolute_error': abs(candidate_overall - human_overall),
         'overall_exact_match': candidate_overall == human_overall,
         'all_five_match': exact == len(CRITERIA),
@@ -87,7 +90,7 @@ def correction_direction(llm1, second_assessor, gold_criteria):
         per_criterion[key] = {
             'llm1_grade': llm1_grades[key],
             'second_grade': second_grades[key],
-            'human_grade': gold_criteria[key],
+            'reference_grade': gold_criteria[key],
             'llm1_distance': llm1_distance,
             'second_distance': second_distance,
             'direction': direction,

@@ -29,16 +29,16 @@ class ReviewerTests(unittest.TestCase):
             grade_requirement('   ')
         call_structured.assert_not_called()
 
-    def test_prompt_includes_full_guide_and_criteria(self):
+    def test_prompt_excludes_full_guide_and_includes_criteria(self):
         system = load_prompt()
         self.assertIn(PROMPT_PATH.read_text(encoding='utf-8'), system)
-        self.assertIn(GUIDE_PATH.read_text(encoding='utf-8'), system)
+        self.assertNotIn(GUIDE_PATH.read_text(encoding='utf-8'), system)
         for key in CRITERIA:
             self.assertIn(key, system)
 
-    @patch('harness.reviewer.GUIDE_PATH')
-    def test_missing_guide_fails_explicitly(self, guide_path):
-        guide_path.exists.return_value = False
+    @patch('harness.reviewer.PROMPT_PATH')
+    def test_missing_prompt_fails_explicitly(self, guide_path):
+        guide_path.__fspath__.return_value = "/nonexistent/grader-prompt.txt"
         with self.assertRaises(FileNotFoundError):
             load_prompt()
 
